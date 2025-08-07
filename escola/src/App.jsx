@@ -6,6 +6,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import AlunosPage from "./pages/AlunosPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import DashboardHomePage from "./pages/DashboardHomePage";
+import PreMatriculaPage from "./pages/PreMatriculaPage";
 import TurmasPage from "./pages/TurmasPage";
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHomePage />} />
         <Route path="alunos" element={<AlunosPage />} />
+        <Route path="pre-matricula" element={<PreMatriculaPage />} />
         <Route path="turmas" element={<TurmasPage />} />
         <Route path="configuracoes" element={<ConfiguracoesPage />} />
       </Route>
