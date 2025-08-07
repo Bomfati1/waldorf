@@ -1,0 +1,118 @@
+/* Estrutura principal do Dashboard */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+/* Barra Lateral (Sidebar) */
+.sidebar {
+  width: 250px;
+  background-color: #14a4f8; /* Um tom de azul */
+  color: white;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav a,
+.sidebar-footer a {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Espaço entre o ícone e o texto */
+  color: rgb(255, 255, 255);
+  text-decoration: none;
+  padding: 12px 15px;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+.sidebar-nav a {
+  margin-bottom: 8px;
+}
+
+.sidebar-nav a:hover,
+.sidebar-footer a:hover {
+  background-color: #0d8cd0; /* Um tom de azul mais escuro para o hover */
+}
+
+/* Estilo para o link ativo (página atual) */
+.sidebar-nav a.active,
+.sidebar-footer a.active {
+  background-color: #0d8cd0; /* Destaque para o link ativo */
+  font-weight: bold;
+}
+
+/* Conteúdo Principal */
+.main-content {
+  flex-grow: 1; /* Faz o conteúdo principal ocupar o resto do espaço */
+  background-color: #f4f7fa;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cabeçalho Superior */
+.top-header {
+  padding: 15px 30px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end; /* Alinha itens à direita */
+  align-items: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.profile-pic {
+  width: 40px;
+  height: 40px;
+  background-color: #ddd;
+  border-radius: 50%; /* Deixa a div redonda */
+  /* No futuro, você usaria background-image para a foto */
+}
+
+.logout-button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #c0392b;
+}
+
+/* Conteúdo da Página */
+.page-content {
+  padding: 30px;
+}
+
+/* Rodapé da Sidebar para o botão de Configurações */
+.sidebar-footer {
+  margin-top: auto; /* Empurra o rodapé para o final da sidebar */
+}
