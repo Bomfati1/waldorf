@@ -1,5 +1,5 @@
 import React from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import "../css/DashboardLayout.css"; // Importa como módulo
 
@@ -19,8 +19,10 @@ const DashboardLayout = () => {
       <main className="main-content">
         <header className="top-header">
           <div className="user-info">
-            <span>Olá, {userName}</span>
-            <div className="profile-pic"></div>
+            <Link to="/dashboard/perfil" className="profile-link">
+              <span>Olá, {userName}</span>
+              <div className="profile-pic"></div>
+            </Link>
             <button className="logout-button" onClick={handleLogout}>
               Sair
             </button>

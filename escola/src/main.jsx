@@ -12,6 +12,10 @@ import TurmasPage from "./pages/TurmasPage";
 import PresencaPage from "./pages/PresencaPage";
 import HistoricoPresencaPage from "./pages/HistoricoPresencaPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
+import PerfilPage from "./pages/PerfilPage";
+import FamiliasPage from "./pages/FamiliasPage";
+import CadastrarTurmaPage from "./pages/CadastrarTurmaPage";
+import CadastrarAlunoPage from "./pages/CadastrarAlunoPage";
 
 // Definindo as rotas usando a API moderna do React Router
 const router = createBrowserRouter([
@@ -50,6 +54,22 @@ const router = createBrowserRouter([
       {
         path: "configuracoes",
         element: <ConfiguracoesPage />,
+      },
+      {
+        path: "perfil",
+        element: <PerfilPage />,
+      },
+      {
+        path: "familias",
+        element: <FamiliasPage />,
+      },
+      {
+        path: "cadastrar-turma",
+        element: <CadastrarTurmaPage />,
+      },
+      {
+        path: "cadastrar-aluno",
+        element: <CadastrarAlunoPage />,
       },
     ],
   },
