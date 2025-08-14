@@ -1,136 +1,121 @@
 import React, { useState } from "react";
 import "../css/CadastrarAlunoPage.css"; // Importar o CSS
+import { useNavigate } from "react-router-dom";
 
 const CadastrarAlunoPage = () => {
-  // Estado para os dados do aluno
-  const [nomeAluno, setNomeAluno] = useState("");
-  const [nascimento, setNascimento] = useState("");
-  const [infoSaude, setInfoSaude] = useState("");
-  const [statusPagamento, setStatusPagamento] = useState("Em dia");
-  const [periodo, setPeriodo] = useState("Manhã");
-  const [nivel, setNivel] = useState("Maternal");
+  // Estado único para todos os campos do formulário
+  const [formData, setFormData] = useState({
+    nome_completo_aluno: "",
+    data_nascimento: "",
+    informacoes_saude: "",
+    status_pagamento: "Integral",
+    // turma_id foi removido
+    nome_completo_responsavel: "",
+    telefone: "",
+    email: "",
+    outro_telefone: "",
+  });
 
-  // Estado para os dados do responsável
-  const [nomeResponsavel, setNomeResponsavel] = useState("");
-  const [telefoneResponsavel, setTelefoneResponsavel] = useState("");
-  const [emailResponsavel, setEmailResponsavel] = useState("");
-  const [outroTelefone, setOutroTelefone] = useState("");
+  // Estados para controle da UI
+  // O estado 'turmas' e o useEffect foram removidos
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    // A validação de turma_id foi removida
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
-    // Validação simples
-    if (
-      !nomeAluno.trim() ||
-      !nascimento ||
-      !nomeResponsavel.trim() ||
-      !telefoneResponsavel.trim() ||
-      !emailResponsavel.trim()
-    ) {
-      alert("Por favor, preencha todos os campos obrigatórios (*).");
-      return;
+    try {
+      const response = await fetch(
+        "http://localhost:3001/cadastrar-aluno-completo",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Ocorreu um erro ao cadastrar.");
+      }
+
+      setSuccess(data.message || "Aluno cadastrado com sucesso!");
+      setTimeout(() => navigate("/dashboard/alunos"), 2000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    const novoAluno = {
-      aluno: {
-        nome: nomeAluno,
-        nascimento,
-        infoSaude,
-        statusPagamento,
-        periodo,
-        nivel,
-      },
-      responsavel: {
-        nome: nomeResponsavel,
-        telefone: telefoneResponsavel,
-        email: emailResponsavel,
-        outroTelefone,
-      },
-    };
-
-    console.log("Novo Aluno a ser cadastrado:", novoAluno);
-    alert("Aluno cadastrado com sucesso! (Verifique o console)");
-
-    // Limpar o formulário
-    setNomeAluno("");
-    setNascimento("");
-    setInfoSaude("");
-    setStatusPagamento("Em dia");
-    setPeriodo("Manhã");
-    setNivel("Maternal");
-    setNomeResponsavel("");
-    setTelefoneResponsavel("");
-    setEmailResponsavel("");
-    setOutroTelefone("");
   };
 
   return (
     <div className="cadastrar-aluno-container">
       <h1>Cadastrar Novo Aluno</h1>
       <form onSubmit={handleSubmit} className="aluno-form">
+        {error && <p className="form-error">{error}</p>}
+        {success && <p className="form-success">{success}</p>}
+
         <fieldset className="form-section">
           <legend>Dados do Aluno</legend>
+
+          {/* O campo de seleção de turma foi removido daqui */}
+
           <div className="form-group">
-            <label htmlFor="nome-aluno">Nome Completo *</label>
+            <label htmlFor="nome_completo_aluno">Nome Completo *</label>
             <input
+              id="nome_completo_aluno"
+              name="nome_completo_aluno"
               type="text"
-              id="nome-aluno"
-              value={nomeAluno}
-              onChange={(e) => setNomeAluno(e.target.value)}
+              value={formData.nome_completo_aluno}
+              onChange={handleChange}
               required
             />
           </div>
+
           <div className="form-group">
-            <label htmlFor="nascimento">Data de Nascimento *</label>
+            <label htmlFor="data_nascimento">Data de Nascimento *</label>
             <input
+              id="data_nascimento"
+              name="data_nascimento"
               type="date"
-              id="nascimento"
-              value={nascimento}
-              onChange={(e) => setNascimento(e.target.value)}
+              value={formData.data_nascimento}
+              onChange={handleChange}
               required
             />
           </div>
+
           <div className="form-group">
-            <label htmlFor="info-saude">Informações de Saúde</label>
+            <label htmlFor="informacoes_saude">Informações de Saúde</label>
             <textarea
-              id="info-saude"
-              value={infoSaude}
-              onChange={(e) => setInfoSaude(e.target.value)}
+              id="informacoes_saude"
+              name="informacoes_saude"
+              value={formData.informacoes_saude}
+              onChange={handleChange}
               placeholder="Alergias, medicamentos, etc."
-            ></textarea>
+            />
           </div>
+
           <div className="form-group">
-            <label htmlFor="pagamento">Status do Pagamento</label>
+            <label htmlFor="status_pagamento">Status do Pagamento</label>
             <select
-              id="pagamento"
-              value={statusPagamento}
-              onChange={(e) => setStatusPagamento(e.target.value)}
+              id="status_pagamento"
+              name="status_pagamento"
+              value={formData.status_pagamento}
+              onChange={handleChange}
             >
+              <option value="Integral">Integral</option>
               <option value="Bolsista">Bolsista</option>
-              <option value="Integral">Integral</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label htmlFor="periodo">Período</label>
-            <select
-              id="periodo"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-            >
-              <option value="Manhã">Manhã</option>
-              <option value="Tarde">Tarde</option>
-              <option value="Integral">Integral</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label htmlFor="nivel">Nível</label>
-            <select
-              id="nivel"
-              value={nivel}
-              onChange={(e) => setNivel(e.target.value)}
-            >
-              <option value="Maternal">Maternal</option>
-              <option value="Jardim">Jardim</option>
             </select>
           </div>
         </fieldset>
@@ -138,51 +123,54 @@ const CadastrarAlunoPage = () => {
         <fieldset className="form-section">
           <legend>Dados do Responsável</legend>
           <div className="form-group">
-            <label htmlFor="nome-responsavel">Nome do Responsável *</label>
+            <label htmlFor="nome_completo_responsavel">
+              Nome do Responsável *
+            </label>
             <input
+              id="nome_completo_responsavel"
+              name="nome_completo_responsavel"
               type="text"
-              id="nome-responsavel"
-              value={nomeResponsavel}
-              onChange={(e) => setNomeResponsavel(e.target.value)}
+              value={formData.nome_completo_responsavel}
+              onChange={handleChange}
               required
             />
           </div>
           <div className="form-group">
-            <label htmlFor="telefone-responsavel">Telefone *</label>
+            <label htmlFor="telefone">Telefone *</label>
             <input
+              id="telefone"
+              name="telefone"
               type="tel"
-              id="telefone-responsavel"
-              value={telefoneResponsavel}
-              onChange={(e) => setTelefoneResponsavel(e.target.value)}
-              placeholder="(XX) XXXXX-XXXX"
+              value={formData.telefone}
+              onChange={handleChange}
               required
             />
           </div>
           <div className="form-group">
-            <label htmlFor="email-responsavel">Email *</label>
+            <label htmlFor="email">Email *</label>
             <input
+              id="email"
+              name="email"
               type="email"
-              id="email-responsavel"
-              value={emailResponsavel}
-              onChange={(e) => setEmailResponsavel(e.target.value)}
-              placeholder="email@exemplo.com"
+              value={formData.email}
+              onChange={handleChange}
               required
             />
           </div>
           <div className="form-group">
-            <label htmlFor="outro-telefone">Outro Telefone</label>
+            <label htmlFor="outro_telefone">Outro Telefone</label>
             <input
+              id="outro_telefone"
+              name="outro_telefone"
               type="tel"
-              id="outro-telefone"
-              value={outroTelefone}
-              onChange={(e) => setOutroTelefone(e.target.value)}
-              placeholder="(XX) XXXXX-XXXX"
+              value={formData.outro_telefone}
+              onChange={handleChange}
             />
           </div>
         </fieldset>
 
-        <button type="submit" className="submit-button">
-          Cadastrar Aluno
+        <button type="submit" className="submit-button" disabled={loading}>
+          {loading ? "Cadastrando..." : "Cadastrar Aluno"}
         </button>
       </form>
     </div>

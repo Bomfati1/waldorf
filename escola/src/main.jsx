@@ -77,6 +77,10 @@ const router = createBrowserRouter([
         path: "cadastrar-aluno",
         element: <CadastrarAlunoPage />,
       },
+      {
+        path: "alunos/:alunoId/editar",
+        element: <CadastrarAlunoPage />,
+      },
     ],
   },
 ]);

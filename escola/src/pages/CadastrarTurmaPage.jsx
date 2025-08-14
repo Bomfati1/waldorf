@@ -1,19 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../css/CadastrarTurmaPage.css"; // Importando o CSS para o formulário
-
-// Dados de exemplo. No futuro, virão de uma API.
-const professoresDisponiveis = [
-  { id: 3, nome: "Beatriz Costa" },
-  { id: 4, nome: "Daniel Martins" },
-  { id: 5, nome: "Fernanda Lima" },
-  { id: 6, nome: "Roberto Alves" },
-];
 
 const CadastrarTurmaPage = () => {
   const [nomeTurma, setNomeTurma] = useState("");
+  const [anoLetivo, setAnoLetivo] = useState(new Date().getFullYear());
   const [periodo, setPeriodo] = useState("Manhã");
-  const [nivel, setNivel] = useState("Maternal");
+  const [nivel, setNivel] = useState("1"); // 1 para Maternal, 0 para Jardim
+  const [professores, setProfessores] = useState([]);
   const [professoresSelecionados, setProfessoresSelecionados] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
+
+  // Busca os professores disponíveis da API
+  useEffect(() => {
+    const fetchProfessores = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3001/usuarios/professores"
+        );
+        if (!response.ok) {
+          throw new Error("Falha ao buscar professores.");
+        }
+        const data = await response.json();
+        setProfessores(data);
+      } catch (err) {
+        setError("Não foi possível carregar a lista de professores.");
+      }
+    };
+    fetchProfessores();
+  }, []);
 
   const handleProfessoresChange = (e) => {
     const selectedOptions = Array.from(
@@ -23,38 +42,47 @@ const CadastrarTurmaPage = () => {
     setProfessoresSelecionados(selectedOptions);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nomeTurma.trim()) {
-      alert("Por favor, preencha o nome da turma.");
-      return;
-    }
-    if (professoresSelecionados.length === 0) {
-      alert("Por favor, selecione ao menos um professor.");
-      return;
-    }
+    setError("");
+    setSuccess("");
+    setLoading(true);
 
     const novaTurma = {
-      nome: nomeTurma,
+      nome_turma: nomeTurma,
+      ano_letivo: anoLetivo,
       periodo,
-      nivel,
+      nivel_ensino: Number(nivel),
       professoresIds: professoresSelecionados,
     };
 
-    console.log("Nova Turma a ser cadastrada:", novaTurma);
-    alert("Turma cadastrada com sucesso! (Verifique o console)");
+    try {
+      const response = await fetch("http://localhost:3001/turmas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novaTurma),
+      });
 
-    // Limpar o formulário
-    setNomeTurma("");
-    setPeriodo("Manhã");
-    setNivel("Maternal");
-    setProfessoresSelecionados([]);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao cadastrar turma.");
+      }
+
+      setSuccess("Turma cadastrada com sucesso! Redirecionando...");
+      setTimeout(() => navigate("/dashboard/turmas"), 2000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="cadastrar-turma-container">
       <h1>Cadastrar Nova Turma</h1>
       <form onSubmit={handleSubmit} className="turma-form">
+        {error && <p className="form-error">{error}</p>}
+        {success && <p className="form-success">{success}</p>}
         <div className="form-group">
           <label htmlFor="nome-turma">Nome da Turma</label>
           <input
@@ -63,6 +91,17 @@ const CadastrarTurmaPage = () => {
             value={nomeTurma}
             onChange={(e) => setNomeTurma(e.target.value)}
             placeholder="Ex: Turma do Sol"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="ano-letivo">Ano Letivo</label>
+          <input
+            type="number"
+            id="ano-letivo"
+            value={anoLetivo}
+            onChange={(e) => setAnoLetivo(e.target.value)}
             required
           />
         </div>
@@ -86,8 +125,8 @@ const CadastrarTurmaPage = () => {
             value={nivel}
             onChange={(e) => setNivel(e.target.value)}
           >
-            <option value="Maternal">Maternal</option>
-            <option value="Jardim">Jardim</option>
+            <option value="1">Maternal</option>
+            <option value="0">Jardim</option>
           </select>
         </div>
 
@@ -100,7 +139,7 @@ const CadastrarTurmaPage = () => {
             onChange={handleProfessoresChange}
             className="multiple-select"
           >
-            {professoresDisponiveis.map((prof) => (
+            {professores.map((prof) => (
               <option key={prof.id} value={prof.id}>
                 {prof.nome}
               </option>
@@ -109,8 +148,8 @@ const CadastrarTurmaPage = () => {
           <small>Segure Ctrl (ou Cmd em Mac) para selecionar mais de um.</small>
         </div>
 
-        <button type="submit" className="submit-button">
-          Cadastrar Turma
+        <button type="submit" className="submit-button" disabled={loading}>
+          {loading ? "Cadastrando..." : "Cadastrar Turma"}
         </button>
       </form>
     </div>
