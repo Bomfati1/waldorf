@@ -345,10 +345,33 @@ const TurmaModal = ({ turma, onClose }) => {
           {/* Lista de Alunos */}
           <h3 style={{ marginTop: 0 }}>Alunos ({turma.alunos.length})</h3>
           {turma.alunos.length > 0 ? (
-            <ul style={{ listStyle: "disc", paddingLeft: "20px" }}>
+            <ul style={{ listStyle: "none", padding: 0 }}>
               {turma.alunos.map((aluno, index) => (
-                <li key={index} style={{ padding: "4px 0" }}>
-                  {aluno}
+                <li
+                  key={index}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "8px 0",
+                    borderBottom: "1px solid #f0f0f0",
+                  }}
+                >
+                  <span>{aluno}</span>
+                  <button
+                    onClick={() => alert(`Anexar relatório para ${aluno}`)}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      backgroundColor: "#6c757d",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    Anexar Relatório
+                  </button>
                 </li>
               ))}
             </ul>
@@ -361,9 +384,24 @@ const TurmaModal = ({ turma, onClose }) => {
             marginTop: "1.5rem",
             paddingTop: "1.5rem",
             borderTop: "1px solid #eee",
-            textAlign: "right",
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
           }}
         >
+          <button
+            onClick={() => alert(`Anexar relatório para a turma ${turma.nome}`)}
+            style={{
+              padding: "10px 16px",
+              cursor: "pointer",
+              border: "1px solid #17a2b8",
+              backgroundColor: "#fff",
+              color: "#17a2b8",
+              borderRadius: "6px",
+            }}
+          >
+            Anexar Relatório da Turma
+          </button>
           <button
             onClick={() =>
               navigate(`/dashboard/turmas/${turma.id}/historico-presenca`)

@@ -1,20 +1,22 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext"; // Importar o hook
 import "../css/PerfilPage.css"; // Vamos criar este CSS a seguir
 
 const PerfilPage = () => {
-  // No futuro, você buscará os dados do usuário do estado global ou de uma API
-  const user = {
-    name: "Matheus",
-    email: "matheus@example.com",
-    // A URL da foto viria do banco de dados
-    photoUrl: null,
-  };
+  // Obter dados do usuário logado a partir do nosso contexto
+  const { user } = useAuth();
 
   const handlePhotoChange = (e) => {
     // Lógica para fazer upload da nova foto
     console.log("Nova foto selecionada:", e.target.files[0]);
     alert("Funcionalidade de upload de foto a ser implementada!");
   };
+
+  // Se o usuário ainda não foi carregado (pode acontecer em um refresh),
+  // mostramos uma mensagem de carregamento.
+  if (!user) {
+    return <div>Carregando perfil...</div>;
+  }
 
   return (
     <div>
@@ -29,7 +31,7 @@ const PerfilPage = () => {
             />
           ) : (
             <div className="profile-photo-placeholder">
-              <span>{user.name.charAt(0)}</span>
+              <span>{user.nome.charAt(0)}</span>
             </div>
           )}
           <label htmlFor="photo-upload" className="photo-upload-button">
@@ -44,10 +46,13 @@ const PerfilPage = () => {
         </div>
         <div className="profile-info-text">
           <p>
-            <strong>Nome:</strong> {user.name}
+            <strong>Nome:</strong> {user.nome}
           </p>
           <p>
             <strong>Email:</strong> {user.email}
+          </p>
+          <p>
+            <strong>Cargo:</strong> {user.cargo}
           </p>
         </div>
       </div>

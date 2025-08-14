@@ -1,60 +1,58 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
-import "../css/DashboardLayout.css"; // Vamos usar o mesmo CSS
+import { NavLink, Link } from "react-router-dom";
 import {
+  FaTachometerAlt,
   FaUserGraduate,
   FaUsers,
+  FaChalkboardTeacher,
+  FaFileSignature,
   FaPlusCircle,
-  FaAddressBook,
-  FaHome,
+  FaUserPlus,
+  FaCog,
+  FaCalendarCheck, // Ícone para Planejamentos
 } from "react-icons/fa";
-import { IoSettingsSharp } from "react-icons/io5";
+
+// Lista de itens de navegação
+const navItems = [
+  { path: "alunos", icon: <FaUserGraduate />, label: "Alunos" },
+  { path: "planejamentos", icon: <FaCalendarCheck />, label: "Planejamentos" },
+  { path: "turmas", icon: <FaChalkboardTeacher />, label: "Turmas" },
+  { path: "pre-matricula", icon: <FaFileSignature />, label: "Pré-Matrícula" },
+  { path: "cadastrar-aluno", icon: <FaUserPlus />, label: "Cadastrar Aluno" },
+  { path: "cadastrar-turma", icon: <FaPlusCircle />, label: "Cadastrar Turma" },
+];
 
 const Sidebar = () => {
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
-        <NavLink to="/dashboard" className="sidebar-header-link">
-          <h2>Primavera Waldorf</h2>
-        </NavLink>
-      </div>
+      <Link to="/dashboard" className="sidebar-header-link">
+        <div className="sidebar-header">
+          <h2>Portal Primavera Waldorf</h2>
+        </div>
+      </Link>
       <nav className="sidebar-nav">
         <ul>
-          <li>
-            <NavLink to="/dashboard/pre-matricula">
-              <FaAddressBook /> Pré-matrícula
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/dashboard/alunos">
-              <FaUserGraduate /> Alunos
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/dashboard/turmas">
-              <FaUsers /> Turmas
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/dashboard/familias">
-              <FaHome /> Famílias
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/dashboard/cadastrar-turma">
-              <FaPlusCircle /> Cadastrar Turma
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/dashboard/cadastrar-aluno">
-              <FaPlusCircle /> Cadastrar Aluno
-            </NavLink>
-          </li>
+          {navItems.map((item) => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) => (isActive ? "active" : "")}
+                // 'end' é importante para a rota da dashboard não ficar sempre ativa
+                end={item.path === "/dashboard"}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            </li>
+          ))}
         </ul>
       </nav>
       <div className="sidebar-footer">
-        <NavLink to="/dashboard/configuracoes">
-          <IoSettingsSharp /> Configurações
+        <NavLink
+          to="configuracoes"
+          className={({ isActive }) => (isActive ? "active" : "")}
+        >
+          <FaCog /> <span>Configurações</span>
         </NavLink>
       </div>
     </aside>
