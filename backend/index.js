@@ -6,15 +6,47 @@ const db = require("./db"); // Importa nossa configuração do banco de dados
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-
+const bodyParser = require("body-parser");
+const xlsx = require("xlsx"); // Para ler arquivos Excel
+const relatoriosRouter = require("./relatorios");
+const { Pool } = require("pg");
 // Inicializa o aplicativo Express
 const app = express();
 const port = 3001; // Define a porta em que o servidor vai rodar
-
+const pool = require("./db");
 // Middlewares
 app.use(cors()); // Habilita o CORS para permitir requisições do frontend
 app.use(express.json()); // Permite que o servidor entenda JSON no corpo das requisições
 
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email e senha são obrigatórios." });
+  }
+  try {
+    const userQuery = await db.query(
+      "SELECT * FROM usuarios WHERE email = $1",
+      [email]
+    );
+    if (userQuery.rows.length === 0) {
+      return res.status(401).json({ error: "Credenciais inválidas." });
+    }
+    const user = userQuery.rows[0];
+    const isMatch = await bcrypt.compare(password, user.senha);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Credenciais inválidas." });
+    }
+    res.status(200).json({
+      message: "Login bem-sucedido!",
+      userId: user.id,
+      nome: user.nome,
+      cargo: user.cargo,
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Erro no servidor." });
+  }
+});
 // Servir arquivos estáticos da pasta 'uploads'
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -31,10 +63,360 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// --- SERVIR ARQUIVOS ESTÁTICOS ---
-// Torna a pasta 'uploads' acessível publicamente pela URL '/uploads'
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Multer para upload em memória (para processamento de arquivos Excel)
+const memoryUpload = multer({ storage: multer.memoryStorage() });
 
+// --- ROTAS ---
+app.use("/relatorios", relatoriosRouter);
+
+// Rota para buscar todos os responsáveis
+app.get("/responsaveis", async (req, res) => {
+  try {
+    const query =
+      "SELECT id, nome_completo, email, telefone, outro_telefone, data_cadastro, rg, cpf FROM familias ORDER BY nome_completo ASC";
+    const { rows } = await pool.query(query);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error("Erro ao buscar responsáveis:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rota para buscar um responsável específico pelo ID
+app.get("/responsaveis/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query = "SELECT * FROM familias WHERE id = $1";
+    const { rows } = await pool.query(query, [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Responsável não encontrado." });
+    }
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error("Erro ao buscar responsável:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rota para buscar os alunos de um responsável específico
+app.get("/responsaveis/:id/alunos", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query =
+      "SELECT id, nome_completo, data_nascimento, status_aluno FROM alunos WHERE familia_id = $1 ORDER BY nome_completo ASC";
+    const { rows } = await pool.query(query, [id]);
+    // Retorna um array (pode ser vazio) de alunos
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error("Erro ao buscar alunos do responsável:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// --- ROTAS PARA INTERESSADOS ---
+
+// Rota para CRIAR um novo interessado
+app.post("/interessados", async (req, res) => {
+  const { nome, telefone, como_conheceu } = req.body;
+  let { intencao } = req.body;
+
+  if (!nome || !telefone) {
+    return res
+      .status(400)
+      .json({ error: "Nome completo e telefone são obrigatórios." });
+  }
+
+  // Converte a string 'sim'/'nao' para um valor booleano que o PostgreSQL entende.
+  const intencaoBooleana =
+    typeof intencao === "string"
+      ? intencao.toLowerCase() === "sim"
+      : !!intencao;
+
+  // O campo 'status' é definido como 'Entrou Em Contato' por padrão na inserção.
+  const insertQuery = `
+    INSERT INTO interessados (nome, telefone, como_conheceu, intencao, status)
+    VALUES ($1, $2, $3, $4, 'Entrou Em Contato')
+    RETURNING *;
+  `;
+
+  try {
+    const novoInteressado = await pool.query(insertQuery, [
+      nome,
+      telefone,
+      como_conheceu,
+      intencaoBooleana,
+    ]);
+    res.status(201).json(novoInteressado.rows[0]);
+  } catch (error) {
+    console.error("Erro ao inserir interessado:", error);
+    res.status(500).json({ error: "Ocorreu um erro no servidor." });
+  }
+});
+
+// Rota para BUSCAR todos os interessados
+app.get("/interessados", async (req, res) => {
+  try {
+    const query =
+      "SELECT id, nome, telefone, como_conheceu, intencao, data_contato, status FROM interessados ORDER BY data_contato DESC, nome ASC";
+    const { rows } = await pool.query(query);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Erro ao buscar interessados:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rota para ATUALIZAR um interessado (principalmente status e intenção)
+app.put("/interessados/:id", async (req, res) => {
+  const { id } = req.params;
+  // Desestrutura o corpo da requisição
+  const { nome, telefone, como_conheceu, status, data_contato } = req.body;
+  let { intencao } = req.body; // 'intencao' é tratada separadamente
+
+  if (!nome || !telefone || !status) {
+    return res
+      .status(400)
+      .json({ error: "Nome, telefone e status são obrigatórios." });
+  }
+
+  // Converte a string 'sim'/'nao' para um valor booleano que o PostgreSQL entende.
+  // Se 'intencao' for uma string, compara com 'sim'. Caso contrário, converte para booleano.
+  const intencaoBooleana =
+    typeof intencao === "string"
+      ? intencao.toLowerCase() === "sim"
+      : !!intencao;
+
+  try {
+    const updateQuery = `
+      UPDATE interessados
+      SET nome = $1, telefone = $2, como_conheceu = $3, intencao = $4, status = $5, data_contato = $6
+      WHERE id = $7
+      RETURNING *;
+    `;
+    const { rows } = await pool.query(updateQuery, [
+      nome,
+      telefone,
+      como_conheceu,
+      intencaoBooleana,
+      status,
+      data_contato,
+      id,
+    ]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Interessado não encontrado." });
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Erro ao atualizar interessado:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rota para DELETAR um interessado
+app.delete("/interessados/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleteQuery = await pool.query(
+      "DELETE FROM interessados WHERE id = $1 RETURNING *",
+      [id]
+    );
+    if (deleteQuery.rowCount === 0) {
+      return res.status(404).json({ error: "Interessado não encontrado." });
+    }
+    res.status(200).json({ message: "Interessado excluído com sucesso." });
+  } catch (error) {
+    console.error("Erro ao excluir interessado:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rota para obter um resumo dos interessados por status (para dashboard)
+app.get("/interessados/dashboard-summary", async (req, res) => {
+  try {
+    const statusQuery = `
+      SELECT status, COUNT(*) AS count
+      FROM interessados
+      GROUP BY status
+      ORDER BY status;
+    `;
+
+    const channelQuery = `
+      SELECT como_conheceu, COUNT(*) AS count
+      FROM interessados
+      WHERE como_conheceu IS NOT NULL
+      GROUP BY como_conheceu
+      ORDER BY count DESC;
+    `;
+
+    const monthlyPerformanceQuery = `
+      SELECT
+          TO_CHAR(data_contato, 'YYYY-MM') as month,
+          COUNT(*) FILTER (WHERE status = 'Ganho') as ganhos,
+          COUNT(*) FILTER (WHERE status = 'Perdido') as perdidos
+      FROM
+          interessados
+      WHERE
+          data_contato IS NOT NULL
+          AND status IN ('Ganho', 'Perdido')
+      GROUP BY
+          month
+      ORDER BY
+          month ASC;
+    `;
+
+    // Executa as consultas em paralelo para mais eficiência
+    const [statusResult, channelResult, monthlyResult] = await Promise.all([
+      pool.query(statusQuery),
+      pool.query(channelQuery),
+      pool.query(monthlyPerformanceQuery),
+    ]);
+
+    res.status(200).json({
+      statusCounts: statusResult.rows,
+      channelCounts: channelResult.rows,
+      monthlyPerformance: monthlyResult.rows,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar resumo do dashboard de interessados:", error);
+    res.status(500).json({
+      error: "Erro interno do servidor ao buscar dados do dashboard.",
+    });
+  }
+});
+
+// Rota para UPLOAD de interessados via Excel/CSV
+app.post(
+  "/interessados/upload-excel",
+  memoryUpload.single("interessados_excel"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo foi enviado." });
+    }
+
+    const client = await pool.connect();
+
+    try {
+      // Ler o arquivo do buffer de memória
+      const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+
+      // Converter a planilha para JSON
+      const data = xlsx.utils.sheet_to_json(worksheet);
+
+      if (data.length === 0) {
+        return res.status(400).json({
+          error: "O arquivo Excel está vazio ou em formato inválido.",
+        });
+      }
+
+      await client.query("BEGIN");
+
+      let insertedCount = 0;
+      for (const row of data) {
+        // Tenta encontrar os dados nas colunas, sendo flexível com maiúsculas/minúsculas e espaços
+        const nome =
+          row["Nome"] ||
+          row["nome"] ||
+          row["Nome Completo"] ||
+          row["nome_completo"];
+        const telefone = row["Telefone"] || row["telefone"];
+        let como_conheceu =
+          row["Como Conheceu"] || row["como_conheceu"] || row["como conheceu"];
+        const intencao =
+          row["Intenção"] ||
+          row["intenção"] ||
+          row["Intencao"] ||
+          row["intencao"];
+
+        // Normaliza o valor de 'intencao' para booleano, aceitando variações comuns
+        const intencaoBooleana = intencao
+          ? ["sim", "s", "yes", "y", "true", "t", "1"].includes(
+              String(intencao).toLowerCase().trim()
+            )
+          : false;
+
+        // Normaliza o valor de 'como_conheceu' para corresponder aos valores do ENUM
+        if (como_conheceu) {
+          como_conheceu = String(como_conheceu).trim(); // Remove espaços em branco
+          if (como_conheceu.toLowerCase() === "indicacao") {
+            como_conheceu = "Indicação"; // Assume que "Indicação" é o valor correto no ENUM
+          }
+          // Adicione outras normalizações aqui se houver mais variações
+          // Ex: if (como_conheceu.toLowerCase() === "redes sociais") { como_conheceu = "Redes Sociais"; }
+        }
+
+        // Validação mínima: nome e telefone são obrigatórios para inserir
+        if (nome && telefone) {
+          const insertQuery = `
+            INSERT INTO interessados (nome, telefone, como_conheceu, intencao, status)
+            VALUES ($1, $2, $3, $4, 'Entrou Em Contato');
+          `;
+          await client.query(insertQuery, [
+            String(nome),
+            String(telefone),
+            como_conheceu || null, // Usa o valor normalizado ou null
+            intencaoBooleana,
+          ]);
+          insertedCount++;
+        }
+      }
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        message: `${insertedCount} de ${data.length} interessados foram importados com sucesso!`,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Erro ao importar interessados do Excel:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro no servidor ao processar o arquivo." });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// Rota para ATUALIZAR (EDITAR) um responsável
+app.put("/responsaveis/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nome, email, telefone, outro_telefone, cpf, rg } = req.body;
+
+  if (!nome || !email || !telefone) {
+    return res
+      .status(400)
+      .json({ error: "Nome, email e telefone são obrigatórios." });
+  }
+  // Converte strings vazias para NULL para campos com restrição de unicidade.
+  // Isso evita que o banco de dados retorne um erro se múltiplos responsáveis
+  // forem salvos sem CPF ou RG, o que resultaria em múltiplas strings vazias ('').
+  const finalCpf = cpf && cpf.trim() ? cpf.trim() : null;
+  const finalRg = rg && rg.trim() ? rg.trim() : null;
+
+  try {
+    const updateQuery = await pool.query(
+      `UPDATE familias SET nome = $1, email = $2, telefone = $3, outro_telefone = $4, cpf = $5, rg = $6 WHERE id = $7 RETURNING *`,
+      [nome, email, telefone, outro_telefone, finalCpf, finalRg, id]
+    );
+
+    if (updateQuery.rowCount === 0) {
+      return res.status(404).json({ error: "Responsável não encontrado." });
+    }
+    res.status(200).json(updateQuery.rows[0]);
+  } catch (err) {
+    console.error("Erro ao atualizar responsável:", err);
+    if (err.code === "23505" && err.constraint === "uk_familias_cpf") {
+      return res
+        .status(409)
+        .json({ error: "O CPF informado já está cadastrado." });
+    }
+    res.status(500).json({ error: "Erro interno ao atualizar o responsável." });
+  }
+});
 // --- ROTAS DE AUTENTICAÇÃO ---
 app.post("/register", async (req, res) => {
   const { nome, email, password, cargo } = req.body;
@@ -71,6 +453,21 @@ app.get("/usuarios/professores", async (req, res) => {
     res.status(500).json({ error: "Erro ao buscar professores." });
   }
 });
+
+// Rota para buscar todos os usuários (membros da equipe)
+app.get("/usuarios", async (req, res) => {
+  try {
+    // Ordena por cargo e depois por nome para uma exibição organizada
+    const query =
+      "SELECT id, nome, email, cargo FROM usuarios ORDER BY cargo, nome";
+    const { rows } = await db.query(query);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error("Erro ao buscar usuários:", err.message);
+    res.status(500).json({ error: "Erro ao buscar usuários." });
+  }
+});
+
 // Rota para BUSCAR os detalhes de um aluno específico para edição
 app.get("/alunos/:id/detalhes", async (req, res) => {
   const { id } = req.params;
@@ -212,6 +609,9 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// Serve arquivos estáticos da pasta 'uploads' para que os downloads funcionem
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // --- ROTAS PARA GERENCIAMENTO DE TURMAS ---
 
 // Rota para LISTAR todas as turmas com detalhes
@@ -340,7 +740,13 @@ app.delete("/turmas/:id", async (req, res) => {
 app.get("/alunos/ativos", async (req, res) => {
   try {
     const allAlunos = await db.query(
-      `SELECT * FROM alunos WHERE status_aluno = TRUE ORDER BY nome_completo ASC`
+      `SELECT
+        a.id, a.nome_completo, a.data_nascimento, a.status_pagamento, a.status_aluno,
+        ta.turma_id
+       FROM alunos a
+       LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
+       WHERE a.status_aluno = TRUE
+       ORDER BY nome_completo ASC`
     );
     res.status(200).json(allAlunos.rows);
   } catch (err) {
@@ -352,12 +758,14 @@ app.get("/alunos/ativos", async (req, res) => {
 app.get("/alunos/inativos", async (req, res) => {
   try {
     // A query agora seleciona o status_pagamento, que estava faltando.
-    const allAlunos = await db.query(
-      `SELECT id, nome_completo, data_nascimento, status_pagamento 
-       FROM alunos
+    const allAlunos = await db.query(`
+       SELECT
+        a.id, a.nome_completo, a.data_nascimento, a.status_pagamento, a.status_aluno,
+        ta.turma_id
+       FROM alunos a
+       LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
        WHERE status_aluno = FALSE 
-       ORDER BY nome_completo ASC`
-    );
+       ORDER BY nome_completo ASC`);
     res.status(200).json(allAlunos.rows);
   } catch (err) {
     console.error(err.message);
@@ -434,23 +842,83 @@ app.post("/alunos/:alunoId/matricular", async (req, res) => {
 // Rota para DELETAR um aluno
 app.delete("/alunos/:id", async (req, res) => {
   const { id } = req.params;
+  const client = await db.connect(); // Usar um cliente para a transação
+
   try {
-    const deleteQuery = await db.query(
-      "DELETE FROM alunos WHERE id = $1 RETURNING *",
+    await client.query("BEGIN");
+
+    // 1. Antes de deletar, busca o familia_id do aluno
+    const alunoResult = await client.query(
+      "SELECT familia_id FROM alunos WHERE id = $1",
       [id]
     );
 
-    if (deleteQuery.rowCount === 0) {
+    if (alunoResult.rowCount === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "Aluno não encontrado." });
     }
+    const { familia_id } = alunoResult.rows[0];
 
-    res.status(200).json({ message: "Aluno excluído com sucesso." });
+    // 2. Deleta o aluno.
+    await client.query("DELETE FROM alunos WHERE id = $1", [id]);
+
+    // 3. Verifica se existem outros alunos associados à mesma família
+    const outrosAlunosResult = await client.query(
+      "SELECT COUNT(*) FROM alunos WHERE familia_id = $1",
+      [familia_id]
+    );
+    const count = parseInt(outrosAlunosResult.rows[0].count, 10);
+
+    // 4. Se não houver mais nenhum aluno, deleta a família
+    if (count === 0) {
+      await client.query("DELETE FROM familias WHERE id = $1", [familia_id]);
+    }
+
+    await client.query("COMMIT");
+    res.status(200).json({
+      message: "Aluno e responsável (se aplicável) excluídos com sucesso.",
+    });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Erro ao excluir aluno." });
+    await client.query("ROLLBACK");
+    console.error("Erro ao excluir aluno e família:", err.message);
+    res.status(500).json({ error: "Erro interno ao excluir o aluno." });
+  } finally {
+    client.release();
   }
 });
 
+// Rota para DELETAR um usuário
+app.delete("/usuarios/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleteQuery = await db.query(
+      "DELETE FROM usuarios WHERE id = $1 RETURNING *",
+      [id]
+    );
+    if (deleteQuery.rowCount === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+    res.status(200).json({ message: "Usuário removido com sucesso." });
+  } catch (err) {
+    console.error("Erro ao remover usuário:", err.message);
+    res.status(500).json({ error: "Erro interno ao remover o usuário." });
+  }
+});
+
+// --- Rotas de Suporte (para preencher os selects no frontend) ---
+app.get("/alunos/ativos", async (req, res) => {
+  const result = await pool.query(
+    "SELECT id, nome_completo FROM alunos WHERE status = TRUE ORDER BY nome_completo"
+  );
+  res.json(result.rows);
+});
+
+app.get("/turmas", async (req, res) => {
+  const result = await pool.query(
+    "SELECT id, nome_turma FROM turmas ORDER BY nome_turma"
+  );
+  res.json(result.rows);
+});
 // --- ROTA DE CADASTRO COMPLETO (ALUNO + FAMÍLIA) ---
 app.post("/cadastrar-aluno-completo", async (req, res) => {
   const {
@@ -755,6 +1223,64 @@ app.post("/planejamentos/find-or-create", async (req, res) => {
     res.status(500).json({ error: "Erro interno ao processar planejamento." });
   }
 });
+// Rota para DELETAR um responsável (família)
+app.delete("/responsaveis/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Primeiro, verifica se a família tem alunos associados.
+    // Isso previne a exclusão de um responsável se houver alunos ligados a ele.
+    const checkAlunos = await pool.query(
+      "SELECT COUNT(*) FROM alunos WHERE familia_id = $1",
+      [id]
+    );
+
+    if (parseInt(checkAlunos.rows[0].count, 10) > 0) {
+      return res.status(400).json({
+        error:
+          "Não é possível excluir este responsável, pois existem alunos associados a ele.",
+      });
+    }
+
+    // Se não houver alunos, procede com a exclusão.
+    const deleteQuery = await pool.query(
+      "DELETE FROM familias WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (deleteQuery.rowCount === 0) {
+      return res.status(404).json({ error: "Responsável não encontrado." });
+    }
+
+    res.status(200).json({ message: "Responsável excluído com sucesso." });
+  } catch (err) {
+    console.error("Erro ao excluir responsável:", err);
+    res.status(500).json({ error: "Erro interno ao excluir o responsável." });
+  }
+});
+
+// Rota para BUSCAR os status de todos os planejamentos de uma turma/ano
+app.get("/planejamentos/status", async (req, res) => {
+  const { turma_id, ano } = req.query;
+
+  if (!turma_id || !ano) {
+    return res
+      .status(400)
+      .json({ error: "ID da turma e ano são obrigatórios." });
+  }
+
+  try {
+    const query = `
+      SELECT mes, semana, status
+      FROM planejamentos
+      WHERE turma_id = $1 AND ano = $2;
+    `;
+    const result = await db.query(query, [turma_id, ano]);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("Erro ao buscar status dos planejamentos:", err.message);
+    res.status(500).json({ error: "Erro interno ao buscar status." });
+  }
+});
 
 // --- ROTAS PARA COMENTÁRIOS DE PLANEJAMENTO ---
 
@@ -805,6 +1331,7 @@ app.post("/planejamentos/:id/comentarios", async (req, res) => {
     res.status(500).json({ error: "Erro interno ao adicionar comentário." });
   }
 });
+
 // ROTA PARA DELETAR UM COMENTÁRIO ESPECÍFICO
 app.delete("/comentarios/:id", async (req, res) => {
   // Pega o ID do comentário que vem da URL (ex: /comentarios/15)

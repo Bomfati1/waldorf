@@ -1,96 +1,69 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-// Dados de exemplo que viriam do seu backend
-const turmasData = [
-  {
-    id: 1,
-    nome: "Maternal I - Manhã",
-    alunos: ["Guilherme Alves", "Aluno Exemplo 1"],
-  },
-  { id: 2, nome: "Maternal II - Tarde", alunos: ["Júlia Rodrigues"] },
-  { id: 3, nome: "Jardim I - Manhã", alunos: ["Lucas Fernandes"] },
-  { id: 4, nome: "Jardim I - Tarde", alunos: [] },
-  {
-    id: 5,
-    nome: "Jardim II - Integral",
-    alunos: ["Beatriz Martins", "Sofia Ribeiro"],
-  },
-];
-
-const historicoData = {
-  1: [
-    {
-      date: "2024-07-29",
-      attendances: {
-        "Guilherme Alves": "presente",
-        "Aluno Exemplo 1": "ausente",
-      },
-    },
-    {
-      date: "2024-07-28",
-      attendances: {
-        "Guilherme Alves": "presente",
-        "Aluno Exemplo 1": "presente",
-      },
-    },
-  ],
-  5: [
-    {
-      date: "2024-07-29",
-      attendances: {
-        "Beatriz Martins": "presente",
-        "Sofia Ribeiro": "justificado",
-      },
-    },
-  ],
+const statusMap = {
+  P: { text: "Presente", color: "#28a745" },
+  F: { text: "Falta", color: "#dc3545" },
+  FJ: { text: "Falta Justificada", color: "#ffc107" },
 };
 
 const HistoricoPresencaPage = () => {
   const { turmaId } = useParams();
   const navigate = useNavigate();
-  const turma = turmasData.find((t) => t.id.toString() === turmaId);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [attendance, setAttendance] = useState({});
+  const [historico, setHistorico] = useState([]);
+  const [turmaInfo, setTurmaInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [openDate, setOpenDate] = useState(null);
 
   useEffect(() => {
-    if (!turma) return;
+    const fetchData = async () => {
+      if (!turmaId) return;
+      setLoading(true);
+      setError("");
 
-    const historicoTurma = historicoData[turmaId] || [];
-    const registroDoDia = historicoTurma.find((r) => r.date === selectedDate);
+      try {
+        const [historicoRes, turmaRes] = await Promise.all([
+          fetch(`http://localhost:3001/turmas/${turmaId}/historico-presenca`),
+          fetch(`http://localhost:3001/turmas/${turmaId}/detalhes-presenca`),
+        ]);
 
-    if (registroDoDia) {
-      setAttendance(registroDoDia.attendances);
-    } else {
-      // Se não houver registro, inicializa todos como presentes
-      const initialAttendance = turma.alunos.reduce((acc, aluno) => {
-        acc[aluno] = "presente";
-        return acc;
-      }, {});
-      setAttendance(initialAttendance);
-    }
-  }, [turma, turmaId, selectedDate]);
+        if (!historicoRes.ok || !turmaRes.ok) {
+          throw new Error("Falha ao buscar dados do histórico da turma.");
+        }
 
-  const handleStatusChange = (aluno, status) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [aluno]: status,
-    }));
+        const historicoData = await historicoRes.json();
+        const turmaData = await turmaRes.json();
+
+        setHistorico(historicoData);
+        setTurmaInfo(turmaData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [turmaId]);
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return new Date(
+      date.getTime() + date.getTimezoneOffset() * 60000
+    ).toLocaleDateString("pt-BR");
   };
 
-  const handleSave = () => {
-    console.log("Salvando presença para a data:", selectedDate);
-    console.log("Dados:", attendance);
-    // Aqui você enviaria os dados para o backend
-    // E atualizaria o `historicoData` (neste exemplo, não vamos mutar o mock data)
-    alert("Presença salva com sucesso!");
-    navigate("/dashboard/turmas"); // Volta para a página de turmas
+  const toggleDate = (date) => {
+    setOpenDate(openDate === date ? null : date);
   };
 
-  if (!turma) {
-    return <div>Carregando informações da turma...</div>;
+  if (loading) {
+    return <div style={{ padding: "2rem" }}>Carregando histórico...</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: "2rem", color: "red" }}>Erro: {error}</div>;
   }
 
   return (
@@ -106,10 +79,11 @@ const HistoricoPresencaPage = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          marginBottom: "2rem",
         }}
       >
-        <h1 style={{ marginBottom: "0.5rem" }}>
-          Registro de Presença: {turma.nome}
+        <h1 style={{ margin: 0 }}>
+          Histórico de Presença: {turmaInfo?.nome_turma || "Turma"}
         </h1>
         <button
           onClick={() => navigate(-1)}
@@ -119,102 +93,87 @@ const HistoricoPresencaPage = () => {
         </button>
       </div>
 
-      <div style={{ marginBottom: "2rem" }}>
-        <label htmlFor="date-picker" style={{ marginRight: "1rem" }}>
-          Data:
-        </label>
-        <input
-          type="date"
-          id="date-picker"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          style={{
-            padding: "8px 12px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
-        />
-      </div>
-
-      <div
-        style={{
-          border: "1px solid #dee2e6",
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr
+      {historico.length === 0 ? (
+        <p>Nenhum registro de presença encontrado para esta turma.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {historico.map((dia) => (
+            <div
+              key={dia.data_aula}
               style={{
-                borderBottom: "2px solid #dee2e6",
-                backgroundColor: "#f8f9fa",
+                border: "1px solid #dee2e6",
+                borderRadius: "8px",
+                overflow: "hidden",
               }}
             >
-              <th
+              <div
+                onClick={() => toggleDate(dia.data_aula)}
                 style={{
-                  padding: "12px",
-                  textAlign: "left",
-                  fontWeight: "normal",
+                  padding: "1rem",
+                  backgroundColor: "#f8f9fa",
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                Aluno
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "left",
-                  fontWeight: "normal",
-                }}
-              >
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {turma.alunos.map((aluno, index) => (
-              <tr key={index} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                <td style={{ padding: "12px" }}>{aluno}</td>
-                <td style={{ padding: "12px", display: "flex", gap: "1rem" }}>
-                  {["presente", "ausente", "justificado"].map((status) => (
-                    <label
-                      key={status}
-                      style={{ cursor: "pointer", textTransform: "capitalize" }}
-                    >
-                      <input
-                        type="radio"
-                        name={`status-${aluno}`}
-                        value={status}
-                        checked={attendance[aluno] === status}
-                        onChange={() => handleStatusChange(aluno, status)}
-                        style={{ marginRight: "0.5rem" }}
-                      />
-                      {status}
-                    </label>
-                  ))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div style={{ marginTop: "2rem", textAlign: "right" }}>
-        <button
-          onClick={handleSave}
-          style={{
-            padding: "12px 24px",
-            backgroundColor: "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          Salvar Presença
-        </button>
-      </div>
+                <strong style={{ fontSize: "1.1rem" }}>
+                  {formatDate(dia.data_aula)}
+                </strong>
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <span>Presentes: {dia.presentes}</span>
+                  <span>Faltas: {dia.faltas}</span>
+                  <span>Justificadas: {dia.faltas_justificadas}</span>
+                </div>
+              </div>
+              {openDate === dia.data_aula && (
+                <div style={{ padding: "1rem" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #dee2e6" }}>
+                        <th style={{ padding: "8px", textAlign: "left" }}>
+                          Aluno
+                        </th>
+                        <th style={{ padding: "8px", textAlign: "left" }}>
+                          Status
+                        </th>
+                        <th style={{ padding: "8px", textAlign: "left" }}>
+                          Observação
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dia.registros.map((reg) => (
+                        <tr
+                          key={reg.aluno_id}
+                          style={{ borderBottom: "1px solid #f0f0f0" }}
+                        >
+                          <td style={{ padding: "8px" }}>
+                            {reg.nome_completo}
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            <span
+                              style={{
+                                color: statusMap[reg.status]?.color || "#000",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {statusMap[reg.status]?.text || reg.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            {reg.observacao || "---"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

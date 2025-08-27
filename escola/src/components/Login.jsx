@@ -77,7 +77,7 @@ const Login = () => {
       }
 
       // Navega para o dashboard
-      navigate("/dashboard");
+      navigate("/home");
     } catch (err) {
       // Captura qualquer erro (de rede ou da lógica acima) e o exibe para o usuário
       console.error("Erro no login:", err.message);

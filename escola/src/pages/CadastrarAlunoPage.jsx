@@ -51,7 +51,7 @@ const CadastrarAlunoPage = () => {
       }
 
       setSuccess(data.message || "Aluno cadastrado com sucesso!");
-      setTimeout(() => navigate("/dashboard/alunos"), 2000);
+      setTimeout(() => navigate("/home/alunos"), 2000);
     } catch (err) {
       setError(err.message);
     } finally {

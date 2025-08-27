@@ -1,15 +1,17 @@
 import React from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import { useAuth } from "../context/AuthContext"; // Importar o hook de autenticação
 import "../css/DashboardLayout.css"; // Importa como módulo
+import { NavLink } from "react-router-dom";
 
 const DashboardLayout = () => {
-  const userName = "Matheus"; // No futuro, este nome virá do estado de login
+  const { user, logout } = useAuth(); // Obter o usuário e a função de logout do contexto
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // Em uma aplicação real, você também limparia o estado de autenticação (tokens, etc.)
-    console.log("Usuário deslogado.");
+    // Chama a função de logout do contexto para limpar os dados do usuário
+    logout();
     navigate("/"); // Redireciona para a página de login
   };
 
@@ -19,10 +21,12 @@ const DashboardLayout = () => {
       <main className="main-content">
         <header className="top-header">
           <div className="user-info">
-            <Link to="/dashboard/perfil" className="profile-link">
-              <span>Olá, {userName}</span>
+            <Link to="/home/perfil" className="profile-link">
+              {/* Exibe o nome do usuário logado ou um texto padrão */}
+              <span>Olá, {user?.nome || "Usuário"}</span>
               <div className="profile-pic"></div>
             </Link>
+
             <button className="logout-button" onClick={handleLogout}>
               Sair
             </button>

@@ -10,7 +10,8 @@ const CadastrarTurmaPage = () => {
   const [professores, setProfessores] = useState([]);
   const [professoresSelecionados, setProfessoresSelecionados] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const [professoresLoading, setProfessoresLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Para o submit do formulário
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
@@ -18,17 +19,31 @@ const CadastrarTurmaPage = () => {
   // Busca os professores disponíveis da API
   useEffect(() => {
     const fetchProfessores = async () => {
+      setProfessoresLoading(true);
       try {
         const response = await fetch(
           "http://localhost:3001/usuarios/professores"
         );
         if (!response.ok) {
-          throw new Error("Falha ao buscar professores.");
+          // Tenta extrair uma mensagem de erro mais específica do backend
+          let errorMsg = `Erro HTTP ${response.status}: Falha na comunicação com o servidor.`;
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || errorMsg; // Usa o erro do backend se disponível
+          } catch (jsonError) {
+            // Se o corpo não for JSON, usa a mensagem de status HTTP
+          }
+          throw new Error(errorMsg);
         }
         const data = await response.json();
         setProfessores(data);
       } catch (err) {
-        setError("Não foi possível carregar a lista de professores.");
+        setError(
+          err.message ||
+            "Não foi possível carregar a lista de professores. Verifique se o servidor está rodando."
+        );
+      } finally {
+        setProfessoresLoading(false);
       }
     };
     fetchProfessores();
@@ -52,7 +67,7 @@ const CadastrarTurmaPage = () => {
       nome_turma: nomeTurma,
       ano_letivo: anoLetivo,
       periodo,
-      nivel_ensino: Number(nivel),
+      nivel: Number(nivel),
       professoresIds: professoresSelecionados,
     };
 
@@ -69,7 +84,7 @@ const CadastrarTurmaPage = () => {
       }
 
       setSuccess("Turma cadastrada com sucesso! Redirecionando...");
-      setTimeout(() => navigate("/dashboard/turmas"), 2000);
+      setTimeout(() => navigate("/home/turmas"), 2000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -115,6 +130,7 @@ const CadastrarTurmaPage = () => {
           >
             <option value="Manhã">Manhã</option>
             <option value="Tarde">Tarde</option>
+            <option value="Integral">Integral</option>
           </select>
         </div>
 
@@ -139,11 +155,17 @@ const CadastrarTurmaPage = () => {
             onChange={handleProfessoresChange}
             className="multiple-select"
           >
-            {professores.map((prof) => (
-              <option key={prof.id} value={prof.id}>
-                {prof.nome}
-              </option>
-            ))}
+            {professoresLoading ? (
+              <option disabled>Carregando professores...</option>
+            ) : professores.length > 0 ? (
+              professores.map((prof) => (
+                <option key={prof.id} value={prof.id}>
+                  {prof.nome}
+                </option>
+              ))
+            ) : (
+              <option disabled>Nenhum professor encontrado.</option>
+            )}
           </select>
           <small>Segure Ctrl (ou Cmd em Mac) para selecionar mais de um.</small>
         </div>

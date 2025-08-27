@@ -1,40 +1,6 @@
 // src/pages/ConfiguracoesPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "../css/ConfiguracoesPage.css"; // Importando o novo CSS
-
-// Dados de exemplo. No futuro, virão de uma API.
-const membrosIniciais = [
-  {
-    id: 1,
-    nome: "Ana Silva",
-    email: "ana.silva@escola.com",
-    cargo: "Administrador Geral",
-  },
-  {
-    id: 2,
-    nome: "Carlos Souza",
-    email: "carlos.souza@escola.com",
-    cargo: "Administrador Pedagógico",
-  },
-  {
-    id: 3,
-    nome: "Beatriz Costa",
-    email: "beatriz.costa@escola.com",
-    cargo: "Professor",
-  },
-  {
-    id: 4,
-    nome: "Daniel Martins",
-    email: "daniel.martins@escola.com",
-    cargo: "Professor",
-  },
-  {
-    id: 5,
-    nome: "Fernanda Lima",
-    email: "fernanda.lima@escola.com",
-    cargo: "Professor",
-  },
-];
 
 // Função para agrupar membros por cargo
 const agruparPorCargo = (membros) => {
@@ -49,11 +15,14 @@ const agruparPorCargo = (membros) => {
 };
 
 function ConfiguracoesPage() {
-  const [membros, setMembros] = useState(membrosIniciais);
+  const [membros, setMembros] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState("Professor"); // Cargo padrão
+  const [newMemberPassword, setNewMemberPassword] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("Professor");
 
   const membrosAgrupados = agruparPorCargo(membros);
   // Define a ordem de exibição dos cargos
@@ -63,30 +32,86 @@ function ConfiguracoesPage() {
     "Professor",
   ];
 
-  const handleAddMember = (e) => {
+  const fetchMembros = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:3001/usuarios");
+      if (!response.ok) {
+        throw new Error("Falha ao buscar os membros da equipe.");
+      }
+      const data = await response.json();
+      setMembros(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMembros();
+  }, [fetchMembros]);
+
+  const handleAddMember = async (e) => {
     e.preventDefault();
-    if (!newMemberName.trim() || !newMemberEmail.trim()) {
-      alert("Por favor, preencha todos os campos.");
+    if (
+      !newMemberName.trim() ||
+      !newMemberEmail.trim() ||
+      !newMemberPassword.trim()
+    ) {
+      alert("Por favor, preencha todos os campos, incluindo a senha.");
       return;
     }
-    const newMember = {
-      id: Date.now(), // Usando timestamp como ID simples
-      nome: newMemberName,
-      email: newMemberEmail,
-      cargo: newMemberRole,
-    };
-    setMembros([...membros, newMember]);
-    // Limpa o formulário e o esconde
-    setNewMemberName("");
-    setNewMemberEmail("");
-    setNewMemberRole("Professor");
-    setShowForm(false);
+    try {
+      const response = await fetch("http://localhost:3001/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome: newMemberName,
+          email: newMemberEmail,
+          password: newMemberPassword,
+          cargo: newMemberRole,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Falha ao adicionar membro.");
+      }
+
+      alert("Membro adicionado com sucesso!");
+      setNewMemberName("");
+      setNewMemberEmail("");
+      setNewMemberPassword("");
+      setNewMemberRole("Professor");
+      setShowForm(false);
+      fetchMembros(); // Atualiza a lista de membros
+    } catch (err) {
+      alert(`Erro: ${err.message}`);
+    }
   };
 
-  const handleRemoveMember = (memberId) => {
-    // Adiciona uma confirmação para evitar remoção acidental
+  const handleRemoveMember = async (memberId) => {
     if (window.confirm("Tem certeza que deseja remover este membro?")) {
-      setMembros(membros.filter((membro) => membro.id !== memberId));
+      try {
+        const response = await fetch(
+          `http://localhost:3001/usuarios/${memberId}`,
+          {
+            method: "DELETE",
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Falha ao remover membro.");
+        }
+        alert("Membro removido com sucesso!");
+        fetchMembros(); // Atualiza a lista de membros
+      } catch (err) {
+        alert(`Erro: ${err.message}`);
+      }
     }
   };
 
@@ -136,6 +161,17 @@ function ConfiguracoesPage() {
                 />
               </div>
               <div className="form-group">
+                <label htmlFor="senha">Senha Provisória</label>
+                <input
+                  type="password"
+                  id="senha"
+                  value={newMemberPassword}
+                  onChange={(e) => setNewMemberPassword(e.target.value)}
+                  placeholder="Crie uma senha para o novo membro"
+                  required
+                />
+              </div>
+              <div className="form-group">
                 <label htmlFor="cargo">Cargo</label>
                 <select
                   id="cargo"
@@ -154,6 +190,11 @@ function ConfiguracoesPage() {
               </button>
             </form>
           </div>
+        )}
+
+        {loading && <p>Carregando membros...</p>}
+        {error && (
+          <p className="error-message">Erro ao carregar membros: {error}</p>
         )}
 
         {cargos.map(

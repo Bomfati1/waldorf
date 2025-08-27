@@ -18,6 +18,10 @@ import FamiliasPage from "./pages/FamiliasPage";
 import CadastrarTurmaPage from "./pages/CadastrarTurmaPage";
 import CadastrarAlunoPage from "./pages/CadastrarAlunoPage";
 import PlanejamentosPage from "./pages/PlanejamentosPage";
+import ResponsaveisPage from "./pages/ResponsaveisPage";
+import RelatoriosPage from "./pages/RelatoriosPage";
+import InteressadosDashboardPage from "./pages/InteressadosDashboardPage"; // Importe o novo componente
+import EditarResponsavelPage from "./pages/EditarResponsavelPage";
 
 // Definindo as rotas usando a API moderna do React Router
 const router = createBrowserRouter([
@@ -26,7 +30,7 @@ const router = createBrowserRouter([
     element: <Login />,
   },
   {
-    path: "/dashboard",
+    path: "/home",
     element: <DashboardLayout />,
     children: [
       {
@@ -66,8 +70,24 @@ const router = createBrowserRouter([
         element: <FamiliasPage />,
       },
       {
+        path: "responsaveis",
+        element: <ResponsaveisPage />,
+      },
+      {
+        path: "responsaveis/:id/editar",
+        element: <EditarResponsavelPage />,
+      },
+      {
         path: "planejamentos",
         element: <PlanejamentosPage />,
+      },
+      {
+        path: "relatorios",
+        element: <RelatoriosPage />,
+      },
+      {
+        path: "interessados-dashboard", // Nova rota para o dashboard
+        element: <InteressadosDashboardPage />,
       },
       {
         path: "cadastrar-turma",

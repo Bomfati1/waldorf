@@ -1,104 +1,88 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// Dados de exemplo que virão do backend futuramente
-const turmasData = [
-  {
-    id: 1,
-    nome: "Maternal I - Manhã",
-    nivel: "maternal",
-    periodo: "Manhã",
-    alunos: ["Guilherme Alves"],
-    professor: "Ana Paula",
-    statusHistory: [
-      { date: "2024-02-01", status: "Início das aulas" },
-      { date: "2024-01-10", status: "Inscrições abertas" },
-    ],
-  },
-  {
-    id: 2,
-    nome: "Maternal II - Tarde",
-    nivel: "maternal",
-    periodo: "Tarde",
-    alunos: ["Júlia Rodrigues"],
-    professor: "Carlos Eduardo",
-    statusHistory: [
-      { date: "2024-01-10", status: "Inscrições abertas" },
-      { date: "2023-11-15", status: "Planejamento" },
-    ],
-  },
-  {
-    id: 3,
-    nome: "Jardim I - Manhã",
-    nivel: "jardim",
-    periodo: "Manhã",
-    alunos: ["Lucas Fernandes"],
-    professor: "Mariana Costa",
-    statusHistory: [
-      { date: "2024-02-01", status: "Início das aulas" },
-      { date: "2023-12-01", status: "Turma confirmada" },
-    ],
-  },
-  {
-    id: 4,
-    nome: "Jardim I - Tarde",
-    nivel: "jardim",
-    periodo: "Tarde",
-    alunos: [],
-    professor: "Fernanda Lima",
-    statusHistory: [{ date: "2024-01-15", status: "Aguardando quórum" }],
-  },
-  {
-    id: 5,
-    nome: "Jardim II - Integral",
-    nivel: "jardim",
-    periodo: "Integral",
-    alunos: ["Beatriz Martins", "Sofia Ribeiro"],
-    professor: "Ricardo Souza",
-    statusHistory: [
-      { date: "2024-02-01", status: "Início das aulas" },
-      { date: "2023-11-20", status: "Turma cheia" },
-    ],
-  },
-];
-
-// Helper para extrair anos únicos do histórico de status
-const getAllStatusYears = (data) => {
-  const years = new Set();
-  data.forEach((turma) => {
-    turma.statusHistory.forEach((item) => {
-      years.add(new Date(item.date + "T00:00:00").getFullYear().toString());
-    });
-  });
-  return Array.from(years).sort((a, b) => b - a); // Ordena do mais recente
-};
-
 const TurmasPage = () => {
-  const [nivelSelecionado, setNivelSelecionado] = useState("maternal");
+  const [nivelSelecionado, setNivelSelecionado] = useState("jardim");
   const [selectedTurma, setSelectedTurma] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
-  const [yearFilter, setYearFilter] = useState(
-    new Date().getFullYear().toString()
-  );
+  const [turmas, setTurmas] = useState([]);
+  const [yearFilter, setYearFilter] = useState("");
+  const [availableYears, setAvailableYears] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const turmasFiltradas = turmasData.filter(
-    (turma) => turma.nivel === nivelSelecionado
-  );
+  useEffect(() => {
+    const fetchTurmas = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("http://localhost:3001/turmas");
+        if (!response.ok) {
+          throw new Error("Falha ao buscar dados das turmas.");
+        }
+        const data = await response.json();
+        setTurmas(data);
 
-  const allStatusHistory = turmasData
-    .flatMap((turma) =>
-      turma.statusHistory.map((statusItem) => ({
-        ...statusItem,
-        turmaNome: turma.nome,
-      }))
-    )
-    .filter(
-      (item) =>
-        new Date(item.date + "T00:00:00").getFullYear().toString() ===
-        yearFilter
-    )
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Extrair anos letivos únicos e definir o filtro inicial
+        if (data.length > 0) {
+          const years = [...new Set(data.map((t) => t.ano_letivo))].sort(
+            (a, b) => b - a
+          );
+          setAvailableYears(years);
+          setYearFilter(years[0].toString()); // Define o ano mais recente como padrão
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTurmas();
+  }, []);
+
+  // Filtra as turmas com base no nível e ano selecionados
+  const turmasFiltradas = turmas.filter((turma) => {
+    // O backend retorna 'nivel' como um booleano (false para Jardim, true para Maternal)
+    const nivelMatch =
+      (nivelSelecionado === "jardim" && turma.nivel === false) ||
+      (nivelSelecionado === "maternal" && turma.nivel === true);
+
+    // Se yearFilter for "" (Todos), o filtro de ano passa.
+    const yearMatch = !yearFilter || turma.ano_letivo.toString() === yearFilter;
+
+    return nivelMatch && yearMatch;
+  });
+
+  const handleDeleteTurma = async (turmaId) => {
+    if (
+      window.confirm(
+        "Tem certeza que deseja excluir esta turma? Esta ação removerá todas as matrículas associadas e não pode ser desfeita."
+      )
+    ) {
+      try {
+        const response = await fetch(
+          `http://localhost:3001/turmas/${turmaId}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Falha ao excluir a turma.");
+        }
+
+        // Remove a turma da lista e fecha o modal
+        setTurmas((prevTurmas) => prevTurmas.filter((t) => t.id !== turmaId));
+        setSelectedTurma(null);
+        alert("Turma excluída com sucesso!");
+      } catch (err) {
+        console.error("Erro ao excluir turma:", err);
+        alert(`Erro: ${err.message}`);
+      }
+    }
+  };
 
   const handleTurmaClick = (turma) => {
     setSelectedTurma(turma);
@@ -125,6 +109,14 @@ const TurmasPage = () => {
     backgroundColor: "#fff",
   };
 
+  if (loading) {
+    return <div style={{ padding: "2rem" }}>Carregando turmas...</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: "2rem" }}>Erro: {error}</div>;
+  }
+
   return (
     <div
       style={{
@@ -133,12 +125,47 @@ const TurmasPage = () => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
-      <h1 style={{ marginBottom: "1.5rem", fontSize: "2rem" }}>
-        Gerenciamento de Turmas
-      </h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <h1 style={{ margin: 0, fontSize: "2rem" }}>Gerenciamento de Turmas</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <label htmlFor="year-filter">Ano Letivo:</label>
+          <select
+            id="year-filter"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "6px",
+              border: "1px solid #ccc",
+            }}
+          >
+            <option value="">Todos</option>
+            {availableYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Seleção de Nível */}
       <div style={{ marginBottom: "2rem", borderBottom: "1px solid #ccc" }}>
+        <button
+          style={
+            nivelSelecionado === "jardim" ? activeButtonStyle : baseButtonStyle
+          }
+          onClick={() => setNivelSelecionado("jardim")}
+        >
+          Jardim
+        </button>
         <button
           style={
             nivelSelecionado === "maternal"
@@ -148,14 +175,6 @@ const TurmasPage = () => {
           onClick={() => setNivelSelecionado("maternal")}
         >
           Maternal
-        </button>
-        <button
-          style={
-            nivelSelecionado === "jardim" ? activeButtonStyle : baseButtonStyle
-          }
-          onClick={() => setNivelSelecionado("jardim")}
-        >
-          Jardim
         </button>
       </div>
 
@@ -167,112 +186,61 @@ const TurmasPage = () => {
           gap: "1.5rem",
         }}
       >
-        {turmasFiltradas.map((turma) => (
-          <div
-            key={turma.id}
-            onClick={() => handleTurmaClick(turma)}
-            onMouseEnter={() => setHoveredCardId(turma.id)}
-            onMouseLeave={() => setHoveredCardId(null)}
-            style={{
-              border: "1px solid #dee2e6",
-              borderRadius: "8px",
-              padding: "1.5rem",
-              backgroundColor: "#fff",
-              boxShadow:
-                hoveredCardId === turma.id
-                  ? "0 4px 12px rgba(0,0,0,0.1)"
-                  : "0 2px 4px rgba(0,0,0,0.05)",
-              cursor: "pointer",
-              transition: "box-shadow 0.2s, transform 0.2s",
-              transform:
-                hoveredCardId === turma.id ? "translateY(-2px)" : "none",
-            }}
-          >
-            <h3
-              style={{ marginTop: 0, marginBottom: "1rem", color: "#343a40" }}
-            >
-              {turma.nome}
-            </h3>
-            <p style={{ margin: "0.5rem 0" }}>
-              <strong>Professor(a):</strong> {turma.professor}
-            </p>
-            <p style={{ margin: "0.5rem 0" }}>
-              <strong>Período:</strong> {turma.periodo}
-            </p>
-            <p style={{ margin: "0.5rem 0" }}>
-              <strong>Alunos:</strong> {turma.alunos.length}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Histórico de Status da Página */}
-      <div style={{ marginTop: "3rem" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "1px solid #ccc",
-            paddingBottom: "0.5rem",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>Histórico de Status das Turmas</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <label htmlFor="year-filter">Filtrar por ano:</label>
-            <select
-              id="year-filter"
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
+        {turmasFiltradas.length > 0 ? (
+          turmasFiltradas.map((turma) => (
+            <div
+              key={turma.id}
+              onClick={() => handleTurmaClick(turma)}
+              onMouseEnter={() => setHoveredCardId(turma.id)}
+              onMouseLeave={() => setHoveredCardId(null)}
               style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
+                border: "1px solid #dee2e6",
+                borderRadius: "8px",
+                padding: "1.5rem",
+                backgroundColor: "#fff",
+                boxShadow:
+                  hoveredCardId === turma.id
+                    ? "0 4px 12px rgba(0,0,0,0.1)"
+                    : "0 2px 4px rgba(0,0,0,0.05)",
+                cursor: "pointer",
+                transition: "box-shadow 0.2s, transform 0.2s",
+                transform:
+                  hoveredCardId === turma.id ? "translateY(-2px)" : "none",
               }}
             >
-              {getAllStatusYears(turmasData).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {allStatusHistory.length > 0 ? (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {allStatusHistory.map((item, index) => (
-              <li
-                key={index}
-                style={{
-                  padding: "12px",
-                  borderBottom: "1px solid #f0f0f0",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
+              <h3
+                style={{ marginTop: 0, marginBottom: "1rem", color: "#343a40" }}
               >
-                <div>
-                  <strong>{item.turmaNome}:</strong> {item.status}
-                </div>
-                <span style={{ color: "#6c757d", fontSize: "0.9em" }}>
-                  {new Date(item.date + "T00:00:00").toLocaleDateString(
-                    "pt-BR"
-                  )}
+                {turma.nome_turma}
+              </h3>
+              <p style={{ margin: "0.5rem 0" }}>
+                <strong>Professor(a):</strong>{" "}
+                {turma.professores.length > 0
+                  ? turma.professores.map((p) => p.nome).join(", ")
+                  : "Nenhum professor associado"}
+              </p>
+              <p style={{ margin: "0.5rem 0" }}>
+                <strong>Período:</strong>{" "}
+                <span style={{ textTransform: "capitalize" }}>
+                  {turma.periodo}
                 </span>
-              </li>
-            ))}
-          </ul>
+              </p>
+              <p style={{ margin: "0.5rem 0" }}>
+                <strong>Alunos:</strong> {turma.alunos_count}
+              </p>
+            </div>
+          ))
         ) : (
-          <p>
-            Nenhum histórico de status encontrado para o ano de {yearFilter}.
-          </p>
+          <p>Nenhuma turma encontrada para o nível selecionado.</p>
         )}
       </div>
 
       {selectedTurma && (
-        <TurmaModal turma={selectedTurma} onClose={handleCloseModal} />
+        <TurmaModal
+          turma={selectedTurma}
+          onClose={handleCloseModal}
+          onDelete={handleDeleteTurma}
+        />
       )}
     </div>
   );
@@ -280,10 +248,90 @@ const TurmasPage = () => {
 
 // --- Componente do Modal ---
 
-const TurmaModal = ({ turma, onClose }) => {
+const TurmaModal = ({ turma, onClose, onDelete }) => {
   const navigate = useNavigate();
+  const fileInputRef = React.useRef(null);
+  const [uploadTarget, setUploadTarget] = useState(null); // { type: 'turma' } ou { type: 'aluno', id: alunoId, nome: 'Nome Aluno' }
+
+  const handleAttachReportClick = (target) => {
+    setUploadTarget(target);
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !uploadTarget) return;
+
+    const targetName =
+      uploadTarget.type === "turma"
+        ? `turma ${turma.nome_turma}`
+        : `aluno(a) ${uploadTarget.nome}`;
+
+    if (
+      !window.confirm(
+        `Deseja anexar o arquivo "${file.name}" para ${targetName}?`
+      )
+    ) {
+      // Limpa o input se o usuário cancelar
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      setUploadTarget(null);
+      return;
+    }
+
+    // --- Início da Lógica de Upload para o Backend ---
+    const formData = new FormData();
+    // 'relatorio' é o nome do campo que o backend (ex: multer) vai esperar
+    formData.append("relatorio", file);
+    formData.append("tipo", uploadTarget.type); // 'turma' ou 'aluno'
+
+    if (uploadTarget.type === "turma") {
+      formData.append("turmaId", turma.id);
+    } else {
+      formData.append("alunoId", uploadTarget.id);
+    }
+
+    try {
+      // Opcional: Adicionar um estado de loading para feedback visual
+      // setLoadingUpload(true);
+      alert(`Enviando o arquivo "${file.name}"...`); // Feedback temporário
+
+      const response = await fetch("http://localhost:3001/relatorios/upload", {
+        method: "POST",
+        body: formData,
+        // Nota: Não defina o header 'Content-Type'. O navegador o define
+        // automaticamente como 'multipart/form-data' com o boundary correto.
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Falha no upload do arquivo.");
+      }
+
+      alert(`Sucesso! Arquivo "${file.name}" anexado para ${targetName}.`);
+      console.log("Resposta do servidor:", result);
+    } catch (err) {
+      console.error("Erro no upload:", err);
+      alert(`Erro ao enviar o arquivo: ${err.message}`);
+    } finally {
+      // Limpa o input e o target após a tentativa de upload
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      setUploadTarget(null);
+      // setLoadingUpload(false);
+    }
+    // --- Fim da Lógica de Upload ---
+  };
+
   const handleModalContentClick = (e) => {
     e.stopPropagation();
+  };
+
+  const handleDelete = () => {
+    onDelete(turma.id);
   };
 
   return (
@@ -316,6 +364,13 @@ const TurmaModal = ({ turma, onClose }) => {
         }}
         onClick={handleModalContentClick}
       >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          style={{ display: "none" }}
+          accept=".pdf,.doc,.docx,.jpg,.png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        />
         <div
           style={{
             display: "flex",
@@ -326,7 +381,7 @@ const TurmaModal = ({ turma, onClose }) => {
             marginBottom: "1rem",
           }}
         >
-          <h2 style={{ margin: 0 }}>{turma.nome}</h2>
+          <h2 style={{ margin: 0 }}>{turma.nome_turma}</h2>
           <button
             style={{
               background: "none",
@@ -343,30 +398,38 @@ const TurmaModal = ({ turma, onClose }) => {
 
         <div style={{ overflowY: "auto", paddingRight: "1rem" }}>
           {/* Lista de Alunos */}
-          <h3 style={{ marginTop: 0 }}>Alunos ({turma.alunos.length})</h3>
-          {turma.alunos.length > 0 ? (
-            <ul style={{ listStyle: "none", padding: 0 }}>
+          <h3 style={{ marginTop: 0 }}>Alunos ({turma.alunos_count})</h3>
+          {turma.alunos && turma.alunos.length > 0 ? (
+            <ul style={{ listStyle: "none", paddingLeft: "0", margin: 0 }}>
               {turma.alunos.map((aluno, index) => (
                 <li
-                  key={index}
+                  key={aluno.id}
                   style={{
+                    padding: "12px 8px",
+                    borderBottom: "1px solid #f0f0f0",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "8px 0",
-                    borderBottom: "1px solid #f0f0f0",
                   }}
                 >
-                  <span>{aluno}</span>
+                  <span>
+                    {index + 1}. {aluno.nome_completo}
+                  </span>
                   <button
-                    onClick={() => alert(`Anexar relatório para ${aluno}`)}
+                    onClick={() =>
+                      handleAttachReportClick({
+                        type: "aluno",
+                        id: aluno.id,
+                        nome: aluno.nome_completo,
+                      })
+                    }
                     style={{
                       padding: "6px 12px",
                       fontSize: "12px",
                       cursor: "pointer",
-                      backgroundColor: "#6c757d",
-                      color: "white",
-                      border: "none",
+                      border: "1px solid #6c757d",
+                      backgroundColor: "#fff",
+                      color: "#6c757d",
                       borderRadius: "4px",
                     }}
                   >
@@ -387,10 +450,26 @@ const TurmaModal = ({ turma, onClose }) => {
             display: "flex",
             justifyContent: "flex-end",
             gap: "1rem",
+            flexWrap: "wrap", // Adicionado para melhor responsividade
           }}
         >
           <button
-            onClick={() => alert(`Anexar relatório para a turma ${turma.nome}`)}
+            onClick={handleDelete}
+            style={{
+              padding: "10px 16px",
+              cursor: "pointer",
+              border: "none",
+              backgroundColor: "#dc3545",
+              color: "white",
+              borderRadius: "6px",
+              marginRight: "auto", // Empurra este botão para a esquerda
+            }}
+          >
+            Excluir Turma
+          </button>
+
+          <button
+            onClick={() => handleAttachReportClick({ type: "turma" })}
             style={{
               padding: "10px 16px",
               cursor: "pointer",
@@ -404,7 +483,7 @@ const TurmaModal = ({ turma, onClose }) => {
           </button>
           <button
             onClick={() =>
-              navigate(`/dashboard/turmas/${turma.id}/historico-presenca`)
+              navigate(`/home/turmas/${turma.id}/historico-presenca`)
             }
             style={{
               padding: "10px 16px",
@@ -416,6 +495,19 @@ const TurmaModal = ({ turma, onClose }) => {
             }}
           >
             Ver Histórico de Presença
+          </button>
+          <button
+            onClick={() => navigate(`/home/turmas/${turma.id}/presenca`)}
+            style={{
+              padding: "10px 16px",
+              cursor: "pointer",
+              border: "none",
+              backgroundColor: "#28a745",
+              color: "white",
+              borderRadius: "6px",
+            }}
+          >
+            Registrar Presença
           </button>
         </div>
       </div>
