@@ -1,7 +1,8 @@
 // src/pages/PreMatriculaPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { FaFileExcel } from "react-icons/fa";
 import InteressadosDashboardPage from "./InteressadosDashboardPage"; // Importa o componente do dashboard
+import ImportDropdown from "../components/ImportDropdown";
+import "../css/ImportDropdown.css";
 
 const statusOptions = [
   "Entrou Em Contato",
@@ -10,6 +11,16 @@ const statusOptions = [
   "Visita Agendada",
   "Ganho",
   "Perdido",
+];
+
+// Opções padronizadas para o campo "como_conheceu"
+const comoConheceuOptions = [
+  "Google",
+  "Instagram",
+  "Facebook",
+  "Tik Tok",
+  "Indicação",
+  "Outro:",
 ];
 
 const getStatusSelectStyles = (status) => {
@@ -67,10 +78,6 @@ const PreMatriculaPage = () => {
   });
 
   // Estados para o upload de arquivo
-  const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const [uploadSuccess, setUploadSuccess] = useState("");
 
   // Estados para edição em linha
   const [editingRowId, setEditingRowId] = useState(null);
@@ -81,7 +88,9 @@ const PreMatriculaPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("http://localhost:3001/interessados");
+      const response = await fetch("http://localhost:3001/interessados", {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Falha ao buscar os dados dos interessados.");
       }
@@ -118,6 +127,7 @@ const PreMatriculaPage = () => {
       const response = await fetch(`http://localhost:3001/interessados/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(updatedInteressado),
       });
 
@@ -195,6 +205,7 @@ const PreMatriculaPage = () => {
       const response = await fetch(`http://localhost:3001/interessados/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(dataToSave),
       });
 
@@ -235,64 +246,6 @@ const PreMatriculaPage = () => {
     }));
   };
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setUploadError("");
-    setUploadSuccess("");
-  };
-
-  const handleExcelUpload = async () => {
-    if (!file) {
-      setUploadError("Por favor, selecione um arquivo.");
-      return;
-    }
-
-    // Adiciona a caixa de diálogo de confirmação
-    const userConfirmed = window.confirm(
-      `Tem certeza que deseja importar os dados do arquivo "${file.name}"?`
-    );
-
-    if (!userConfirmed) {
-      // Opcional: Limpa o input se o usuário cancelar
-      setFile(null);
-      document.getElementById("excel-upload").value = "";
-      return; // Interrompe a execução se o usuário cancelar
-    }
-
-    setUploading(true);
-    setUploadError("");
-    setUploadSuccess("");
-
-    const formData = new FormData();
-    formData.append("interessados_excel", file);
-
-    try {
-      const response = await fetch(
-        "http://localhost:3001/interessados/upload-excel",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Ocorreu um erro no upload do arquivo.");
-      }
-
-      setUploadSuccess(
-        data.message ||
-          "Arquivo enviado com sucesso! Os dados foram importados."
-      );
-      setFile(null);
-      document.getElementById("excel-upload").value = "";
-      fetchInteressados(); // Atualiza a lista
-    } catch (err) {
-      setUploadError(err.message);
-    } finally {
-      setUploading(false);
-    }
-  };
 
   // Aplica os filtros aos dados
   const filteredMatriculas = preMatriculas.filter((matricula) => {
@@ -333,6 +286,7 @@ const PreMatriculaPage = () => {
     ...actionButtonStyle,
     backgroundColor: "#6c757d",
   };
+  const deleteButtonStyle = { ...actionButtonStyle, backgroundColor: "#dc3545" };
   const inputStyle = {
     width: "100%",
     padding: "8px 12px",
@@ -340,6 +294,32 @@ const PreMatriculaPage = () => {
     border: "1px solid #ccc",
     boxSizing: "border-box",
     minWidth: "120px",
+  };
+
+  const handleDeleteClick = async (id) => {
+    const confirmDelete = window.confirm(
+      "Tem certeza que deseja excluir este interessado? Esta ação não pode ser desfeita."
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`http://localhost:3001/interessados/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Falha ao excluir o interessado.");
+      }
+      setPreMatriculas((current) => current.filter((m) => m.id !== id));
+      if (editingRowId === id) {
+        setEditingRowId(null);
+        setEditedData({});
+      }
+    } catch (err) {
+      console.error("Erro ao excluir interessado:", err);
+      alert(`Não foi possível excluir: ${err.message}`);
+    }
   };
 
   return (
@@ -376,82 +356,36 @@ const PreMatriculaPage = () => {
 
       {activeView === "list" && (
         <>
-          {/* Seção de Upload de Excel */}
-          <div
-            style={{
-              padding: "1rem",
-              backgroundColor: "#f8f9fa",
-              border: "1px solid #dee2e6",
-              borderRadius: "8px",
-              marginBottom: "1.5rem",
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: "1rem" }}>
-              Importar Interessados via Excel
-            </h3>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                flexWrap: "wrap",
-              }}
-            >
-              <label
-                htmlFor="excel-upload"
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#17a2b8",
-                  color: "white",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <FaFileExcel />
-                Selecionar Arquivo
-              </label>
-              <input
-                id="excel-upload"
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
-              {file && <span>{file.name}</span>}
-              {file && (
-                <button
-                  onClick={handleExcelUpload}
-                  disabled={uploading}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    border: "none",
-                    backgroundColor: "#28a745",
-                    color: "white",
-                    cursor: "pointer",
-                    opacity: uploading ? 0.6 : 1,
-                  }}
-                >
-                  {uploading ? "Enviando..." : "Confirmar Envio"}
-                </button>
-              )}
-            </div>
-            {uploadError && (
-              <p style={{ color: "red", marginTop: "0.5rem", marginBottom: 0 }}>
-                Erro: {uploadError}
-              </p>
-            )}
-            {uploadSuccess && (
-              <p
-                style={{ color: "green", marginTop: "0.5rem", marginBottom: 0 }}
-              >
-                {uploadSuccess}
-              </p>
-            )}
-          </div>
+          {/* Menu Suspenso de Importação */}
+          <ImportDropdown
+            buttonText="Importar via Excel"
+            buttonIcon="📊"
+            options={[
+              {
+                icon: "👥",
+                title: "Importar Interessados",
+                endpoint: "/interessados/upload-excel",
+                acceptedColumns: [
+                  { name: "Nome", description: "Nome completo do interessado", required: true },
+                  { name: "Email", description: "Endereço de email do interessado", required: true },
+                  { name: "Telefone", description: "Número de telefone do interessado", required: true },
+                  { name: "Data", description: "Data de interesse (formato: YYYY-MM-DD)", required: false },
+                  { name: "Status", description: "Status do interessado (Entrou Em Contato, Conversando, Negociando, Visita Agendada, Ganho, Perdido)", required: false },
+                  { name: "Intenção", description: "Intenção de matrícula (sim/nao)", required: false },
+                  { name: "Observações", description: "Observações adicionais (opcional)", required: false }
+                ],
+                description: "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos interessados de uma vez. O sistema criará automaticamente novos registros na base de dados.",
+                buttonText: "Importar Interessados",
+                onSuccess: (data) => {
+                  // Recarregar a lista de interessados após importação bem-sucedida
+                  fetchInteressados();
+                },
+                onError: (data) => {
+                  console.error("Erro na importação:", data);
+                }
+              }
+            ]}
+          />
 
           {/* Seção de Filtros */}
           <div
@@ -622,13 +556,25 @@ const PreMatriculaPage = () => {
                           />
                         </td>
                         <td style={{ padding: "12px" }}>
-                          <input
-                            type="text"
+                          <select
                             name="como_conheceu"
-                            value={editedData.como_conheceu}
+                            value={editedData.como_conheceu || ""}
                             onChange={handleEditChange}
                             style={inputStyle}
-                          />
+                          >
+                            {/* Se o valor atual não estiver nas opções, preserva-o como primeira opção */}
+                            {editedData.como_conheceu &&
+                              !comoConheceuOptions.includes(editedData.como_conheceu) && (
+                                <option value={editedData.como_conheceu}>
+                                  {editedData.como_conheceu}
+                                </option>
+                              )}
+                            {comoConheceuOptions.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td style={{ padding: "12px" }}>
                           <select
@@ -683,6 +629,12 @@ const PreMatriculaPage = () => {
                             style={cancelButtonStyle}
                           >
                             Cancelar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(matricula.id)}
+                            style={deleteButtonStyle}
+                          >
+                            Excluir
                           </button>
                         </td>
                       </tr>

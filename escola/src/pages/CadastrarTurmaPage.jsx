@@ -22,7 +22,10 @@ const CadastrarTurmaPage = () => {
       setProfessoresLoading(true);
       try {
         const response = await fetch(
-          "http://localhost:3001/usuarios/professores"
+          "http://localhost:3001/usuarios/professores",
+          {
+            credentials: "include",
+          }
         );
         if (!response.ok) {
           // Tenta extrair uma mensagem de erro mais específica do backend
@@ -75,6 +78,7 @@ const CadastrarTurmaPage = () => {
       const response = await fetch("http://localhost:3001/turmas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(novaTurma),
       });
 

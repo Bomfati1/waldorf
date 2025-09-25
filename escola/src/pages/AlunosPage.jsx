@@ -189,12 +189,168 @@ const AlunosPageCSS = () => (
       font-size: 1rem;
       cursor: pointer;
     }
+    
+    /* Estilos para a seção de foto de perfil */
+    .photo-section {
+      border: 2px dashed #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      background-color: #f9fafb;
+    }
+    
+    .photo-container {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    
+    .photo-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+    }
+    
+    .aluno-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .photo-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 24px;
+    }
+    
+    .photo-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .photo-upload-btn, .photo-remove-btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    
+    .photo-upload-btn {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .photo-upload-btn:hover {
+      background-color: #2563eb;
+      transform: translateY(-1px);
+    }
+    
+    .photo-remove-btn {
+      background-color: #ef4444;
+      color: white;
+    }
+    
+    .photo-remove-btn:hover {
+      background-color: #dc2626;
+      transform: translateY(-1px);
+    }
+    
+    /* Estilos para fotos na tabela */
+    .table-photo {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+    }
+    
+    .table-aluno-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .table-photo-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    /* Estilos para mensagens de feedback */
+    .photo-message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .photo-message.success {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    
+    .photo-message.error {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    
+    .photo-upload-btn.uploading {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   `}</style>
 );
 
 // O componente EditAlunoModal permanece o mesmo, pois sua lógica interna não precisa de alterações.
-const EditAlunoModal = ({ alunoData, onClose, onSave }) => {
+const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   const [formData, setFormData] = useState(alunoData);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+
+  // Função para formatar telefone (simples)
+  const formatPhone = (phone) => {
+    if (!phone) return "";
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 11) {
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(
+        7
+      )}`;
+    } else if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(
+        6
+      )}`;
+    }
+    return phone;
+  };
 
   useEffect(() => {
     setFormData(alunoData);
@@ -205,9 +361,109 @@ const EditAlunoModal = ({ alunoData, onClose, onSave }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handlePhotoUpload = async (file) => {
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith("image/")) {
+      setMessage("Por favor, selecione apenas arquivos de imagem.");
+      setMessageType("error");
+      return;
+    }
+
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("A imagem deve ter no máximo 5MB.");
+      setMessageType("error");
+      return;
+    }
+
+    setUploading(true);
+    setMessage("");
+    setMessageType("");
+
+    const formData = new FormData();
+    formData.append("alunoPhoto", file);
+
+    try {
+      const response = await fetch(
+        `http://localhost:3001/alunos/${alunoData.aluno_id}/upload-photo`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(data.message);
+        setMessageType("success");
+        // Atualiza os dados do formulário com a nova foto
+        setFormData((prev) => ({ ...prev, foto_perfil: data.imageUrl }));
+      } else {
+        setMessage(data.error || "Erro ao fazer upload da foto.");
+        setMessageType("error");
+      }
+    } catch (error) {
+      setMessage("Erro de conexão. Tente novamente.");
+      setMessageType("error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!formData.foto_perfil) return;
+
+    if (!window.confirm("Tem certeza que deseja remover a foto do aluno?")) {
+      return;
+    }
+
+    setUploading(true);
+    setMessage("");
+    setMessageType("");
+
+    try {
+      const response = await fetch(
+        `http://localhost:3001/alunos/${alunoData.aluno_id}/remove-photo`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(data.message);
+        setMessageType("success");
+        // Atualiza os dados do formulário removendo a foto
+        setFormData((prev) => ({ ...prev, foto_perfil: null }));
+      } else {
+        setMessage(data.error || "Erro ao remover a foto.");
+        setMessageType("error");
+      }
+    } catch (error) {
+      setMessage("Erro de conexão. Tente novamente.");
+      setMessageType("error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    // Garante que turma_id seja numérico quando selecionado
+    const payload = {
+      ...formData,
+      turma_id:
+        formData.turma_id !== undefined && formData.turma_id !== ""
+          ? Number(formData.turma_id)
+          : formData.turma_id,
+    };
+    onSave(payload);
   };
 
   return (
@@ -220,8 +476,73 @@ const EditAlunoModal = ({ alunoData, onClose, onSave }) => {
           </button>
         </div>
         <form onSubmit={handleSubmit} className="aluno-form">
+          {/* Mensagens de feedback */}
+          {message && (
+            <div className={`photo-message ${messageType}`}>{message}</div>
+          )}
+
           <fieldset className="form-section">
             <legend>Dados do Aluno</legend>
+
+            {/* Seção de Foto de Perfil */}
+            <div className="form-group photo-section">
+              <label>Foto de Perfil</label>
+              <div className="photo-container">
+                <div className="photo-preview">
+                  {formData.foto_perfil ? (
+                    <img
+                      src={`http://localhost:3001${formData.foto_perfil}`}
+                      alt="Foto do aluno"
+                      className="aluno-photo"
+                    />
+                  ) : (
+                    <div className="photo-placeholder">
+                      <span>
+                        {formData.nome_aluno
+                          ? formData.nome_aluno.charAt(0).toUpperCase()
+                          : "A"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="photo-actions">
+                  <label
+                    htmlFor="aluno-photo-upload"
+                    className={`photo-upload-btn ${
+                      uploading ? "uploading" : ""
+                    }`}
+                  >
+                    {uploading ? "⏳ Enviando..." : "📷 Alterar Foto"}
+                  </label>
+                  {formData.foto_perfil && (
+                    <button
+                      type="button"
+                      className="photo-remove-btn"
+                      onClick={handleRemovePhoto}
+                      disabled={uploading}
+                    >
+                      🗑️ Remover
+                    </button>
+                  )}
+                  <input
+                    type="file"
+                    id="aluno-photo-upload"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handlePhotoUpload(file);
+                      }
+                      // Limpa o input para permitir selecionar o mesmo arquivo novamente
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="form-group">
               <label htmlFor="nome_aluno">Nome Completo *</label>
               <input
@@ -249,6 +570,26 @@ const EditAlunoModal = ({ alunoData, onClose, onSave }) => {
                 disabled
                 style={{ backgroundColor: "#f0f0f0", cursor: "not-allowed" }}
               />
+            </div>
+            <div className="form-group">
+              <label htmlFor="turma_id">Alterar para</label>
+              <select
+                id="turma_id"
+                name="turma_id"
+                value={
+                  formData.turma_id !== undefined && formData.turma_id !== null
+                    ? String(formData.turma_id)
+                    : ""
+                }
+                onChange={handleChange}
+              >
+                <option value="">Manter como está</option>
+                {turmas?.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome_turma} ({t.periodo})
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label htmlFor="data_nascimento">Data de Nascimento *</label>
@@ -310,6 +651,53 @@ const EditAlunoModal = ({ alunoData, onClose, onSave }) => {
                 onChange={handleChange}
                 required
               />
+              {formData.telefone && (
+                <small
+                  style={{
+                    color: "#007bff",
+                    fontSize: "0.8em",
+                    display: "block",
+                    marginTop: "4px",
+                  }}
+                >
+                  📞 Principal: {formatPhone(formData.telefone)}
+                </small>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="outro_telefone">Outro Telefone</label>
+              <input
+                id="outro_telefone"
+                type="tel"
+                name="outro_telefone"
+                value={formData.outro_telefone || ""}
+                onChange={handleChange}
+                placeholder="Telefone adicional (opcional)"
+              />
+              {formData.outro_telefone && formData.outro_telefone.trim() && (
+                <small
+                  style={{
+                    color: "#28a745",
+                    fontSize: "0.8em",
+                    display: "block",
+                    marginTop: "4px",
+                  }}
+                >
+                  ✓ Segundo telefone: {formatPhone(formData.outro_telefone)}
+                </small>
+              )}
+              {!formData.outro_telefone && (
+                <small
+                  style={{
+                    color: "#6c757d",
+                    fontSize: "0.8em",
+                    display: "block",
+                    marginTop: "4px",
+                  }}
+                >
+                  Nenhum telefone adicional cadastrado
+                </small>
+              )}
             </div>
             <div className="form-group">
               <label htmlFor="email">Email *</label>
@@ -342,7 +730,9 @@ const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
-        const response = await fetch("http://localhost:3001/turmas");
+        const response = await fetch("http://localhost:3001/turmas", {
+          credentials: "include",
+        });
         if (!response.ok) throw new Error("Falha ao buscar turmas.");
         const data = await response.json();
         setTurmas(data);
@@ -441,9 +831,15 @@ const AlunosPage = () => {
     try {
       // Usando Promise.all para buscar alunos e turmas em paralelo
       const [ativosRes, inativosRes, turmasRes] = await Promise.all([
-        fetch("http://localhost:3001/alunos/ativos"),
-        fetch("http://localhost:3001/alunos/inativos"),
-        fetch("http://localhost:3001/turmas"),
+        fetch("http://localhost:3001/alunos/ativos", {
+          credentials: "include",
+        }),
+        fetch("http://localhost:3001/alunos/inativos", {
+          credentials: "include",
+        }),
+        fetch("http://localhost:3001/turmas", {
+          credentials: "include",
+        }),
       ]);
 
       if (!ativosRes.ok || !inativosRes.ok || !turmasRes.ok) {
@@ -506,7 +902,10 @@ const AlunosPage = () => {
   const handleOpenEditModal = async (alunoId) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoId}/detalhes`
+        `http://localhost:3001/alunos/${alunoId}/detalhes`,
+        {
+          credentials: "include",
+        }
       );
       if (!response.ok) throw new Error("Falha ao buscar detalhes do aluno.");
       const data = await response.json();
@@ -525,6 +924,7 @@ const AlunosPage = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(updatedData),
         }
       );
@@ -555,6 +955,7 @@ const AlunosPage = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ turmaId }),
         }
       );
@@ -583,6 +984,7 @@ const AlunosPage = () => {
           `http://localhost:3001/alunos/${alunoId}`,
           {
             method: "DELETE",
+            credentials: "include",
           }
         );
 
@@ -680,6 +1082,7 @@ const AlunosPage = () => {
             <table>
               <thead>
                 <tr>
+                  <th>Foto</th>
                   <th>Nome Completo</th>
                   <th>Nascimento</th>
                   <th>Pagamento</th>
@@ -691,6 +1094,21 @@ const AlunosPage = () => {
                 {filteredAlunos.length > 0 ? (
                   filteredAlunos.map((aluno) => (
                     <tr key={aluno.id}>
+                      <td>
+                        <div className="table-photo">
+                          {aluno.foto_perfil ? (
+                            <img
+                              src={`http://localhost:3001${aluno.foto_perfil}`}
+                              alt="Foto do aluno"
+                              className="table-aluno-photo"
+                            />
+                          ) : (
+                            <div className="table-photo-placeholder">
+                              {aluno.nome_completo.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td>{aluno.nome_completo}</td>
                       <td>{formatDate(aluno.data_nascimento)}</td>
                       <td>{aluno.status_pagamento}</td>
@@ -729,7 +1147,7 @@ const AlunosPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5">
+                    <td colSpan="6">
                       Nenhum aluno encontrado com os filtros aplicados.
                     </td>
                   </tr>
@@ -743,6 +1161,7 @@ const AlunosPage = () => {
       {isEditModalOpen && editingAluno && (
         <EditAlunoModal
           alunoData={editingAluno}
+          turmas={turmas}
           onClose={() => {
             setIsEditModalOpen(false);
             setEditingAluno(null);

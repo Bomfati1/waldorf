@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import ImportDropdown from "../components/ImportDropdown";
+import "../css/ImportDropdown.css";
 
 // Componente de estilo para a tabela (pode ser movido para um arquivo CSS)
 const ResponsaveisPageCSS = () => (
@@ -84,7 +86,9 @@ const ResponsaveisPageCSS = () => (
       border-radius: 8px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.3);
       width: 90%;
-      max-width: 500px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
       position: relative;
     }
     .modal-header {
@@ -122,7 +126,51 @@ const ResponsaveisPageCSS = () => (
 );
 
 const ResponsavelModal = ({ responsavel, onClose, onEdit }) => {
+  const [alunos, setAlunos] = useState([]);
+  const [loadingAlunos, setLoadingAlunos] = useState(false);
+
+  useEffect(() => {
+    const fetchAlunos = async () => {
+      if (!responsavel?.id) return;
+
+      setLoadingAlunos(true);
+      try {
+        const response = await fetch(
+          `http://localhost:3001/responsaveis/${responsavel.id}/alunos`,
+          {
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setAlunos(data);
+        } else {
+          console.error("Erro ao buscar alunos:", response.statusText);
+          setAlunos([]);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar alunos:", err);
+        setAlunos([]);
+      } finally {
+        setLoadingAlunos(false);
+      }
+    };
+
+    if (responsavel) {
+      fetchAlunos();
+    }
+  }, [responsavel]);
+
   if (!responsavel) return null;
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return new Date(
+      date.getTime() + date.getTimezoneOffset() * 60000
+    ).toLocaleDateString("pt-BR");
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -153,6 +201,106 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit }) => {
         </div>
         <div className="detail-item">
           <strong>RG:</strong> <span>{responsavel.rg || "Não informado"}</span>
+        </div>
+
+        {/* Seção de Alunos Vinculados */}
+        <div
+          className="detail-item"
+          style={{
+            marginTop: "1.5rem",
+            borderTop: "1px solid #e0e0e0",
+            paddingTop: "1rem",
+          }}
+        >
+          <strong>
+            Alunos Vinculados
+            {!loadingAlunos && alunos.length > 0 && (
+              <span
+                style={{
+                  fontSize: "0.8em",
+                  color: "#666",
+                  fontWeight: "normal",
+                  marginLeft: "8px",
+                }}
+              >
+                ({alunos.length} {alunos.length === 1 ? "aluno" : "alunos"})
+              </span>
+            )}
+            :
+          </strong>
+          {loadingAlunos ? (
+            <div
+              style={{ padding: "10px 0", color: "#666", fontStyle: "italic" }}
+            >
+              Carregando alunos...
+            </div>
+          ) : alunos.length > 0 ? (
+            <div
+              style={{
+                marginTop: "10px",
+                maxHeight: "200px",
+                overflowY: alunos.length > 3 ? "auto" : "visible",
+                paddingRight: alunos.length > 3 ? "5px" : "0",
+              }}
+            >
+              {alunos.map((aluno) => (
+                <div
+                  key={aluno.id}
+                  style={{
+                    padding: "8px 12px",
+                    margin: "5px 0",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "6px",
+                    border: "1px solid #e9ecef",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = "#e9ecef";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = "#f8f9fa";
+                  }}
+                  title="Clique para ver mais detalhes do aluno"
+                >
+                  <div style={{ fontWeight: "600", color: "#333" }}>
+                    {aluno.nome_completo}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.85em",
+                      color: "#666",
+                      marginTop: "2px",
+                    }}
+                  >
+                    Nascimento: {formatDate(aluno.data_nascimento)} • Status:{" "}
+                    <span
+                      style={{
+                        color: aluno.status_aluno === 1 ? "#28a745" : "#dc3545",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {aluno.status_aluno === 1 ? "Ativo" : "Inativo"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: "10px 0",
+                color: "#666",
+                fontStyle: "italic",
+                textAlign: "center",
+                backgroundColor: "#f8f9fa",
+                borderRadius: "6px",
+                margin: "10px 0",
+              }}
+            >
+              Nenhum aluno vinculado a este responsável
+            </div>
+          )}
         </div>
         <div
           style={{
@@ -195,7 +343,9 @@ const ResponsaveisPage = () => {
     const fetchResponsaveis = async () => {
       try {
         // Vamos assumir que a rota no seu backend será /responsaveis
-        const response = await fetch("http://localhost:3001/responsaveis");
+        const response = await fetch("http://localhost:3001/responsaveis", {
+          credentials: "include",
+        });
         if (!response.ok) {
           throw new Error("Falha ao buscar os dados dos responsáveis.");
         }
@@ -275,6 +425,60 @@ const ResponsaveisPage = () => {
           />
         </div>
       </div>
+
+      <ImportDropdown
+        buttonText="Importar via Excel"
+        buttonIcon="📊"
+        options={[
+          {
+            icon: "👥",
+            title: "Importar Responsáveis",
+            endpoint: "/responsaveis/upload-excel",
+            acceptedColumns: [
+              {
+                name: "Nome Completo",
+                description: "Nome completo do responsável",
+                required: true,
+              },
+              {
+                name: "Email",
+                description: "Endereço de email do responsável",
+                required: true,
+              },
+              {
+                name: "Telefone",
+                description: "Número de telefone principal",
+                required: true,
+              },
+              {
+                name: "Outro Telefone",
+                description: "Número de telefone secundário (opcional)",
+                required: false,
+              },
+              {
+                name: "RG",
+                description: "Número do RG (opcional)",
+                required: false,
+              },
+              {
+                name: "CPF",
+                description: "Número do CPF (opcional)",
+                required: false,
+              },
+            ],
+            description:
+              "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos responsáveis de uma vez. O sistema criará automaticamente novos registros na base de dados.",
+            buttonText: "Importar Responsáveis",
+            onSuccess: (data) => {
+              // Recarregar a lista de responsáveis após importação bem-sucedida
+              fetchResponsaveis();
+            },
+            onError: (data) => {
+              console.error("Erro na importação:", data);
+            },
+          },
+        ]}
+      />
 
       <table className="responsaveis-table">
         <thead>

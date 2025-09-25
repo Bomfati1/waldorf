@@ -151,7 +151,9 @@ const PlanejamentosPage = () => {
       setError(null);
       try {
         // A rota /turmas já retorna o ano letivo, o que é perfeito para o filtro.
-        const response = await fetch("http://localhost:3001/turmas");
+        const response = await fetch("http://localhost:3001/turmas", {
+          credentials: "include",
+        });
         if (!response.ok) {
           throw new Error("Falha ao buscar dados das turmas.");
         }
@@ -194,7 +196,10 @@ const PlanejamentosPage = () => {
       }
       try {
         const response = await fetch(
-          `http://localhost:3001/planejamentos/status?turma_id=${selectedTurma}&ano=${selectedYear}`
+          `http://localhost:3001/planejamentos/status?turma_id=${selectedTurma}&ano=${selectedYear}`,
+          {
+            credentials: "include",
+          }
         );
         if (!response.ok) {
           console.error("Falha ao buscar status dos planejamentos.");
@@ -284,6 +289,7 @@ const PlanejamentosPage = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(dadosParaBackend),
         }
       );
@@ -319,6 +325,86 @@ const PlanejamentosPage = () => {
         ...prevStatuses,
         [statusKey]: updatedData.status,
       }));
+    }
+  };
+
+  const handleDeletePlanning = async (planejamentoId, mes, semana) => {
+    console.log("Tentando excluir planejamento:", {
+      planejamentoId,
+      mes,
+      semana,
+      userCargo: user?.cargo,
+    });
+
+    if (!window.confirm("Tem certeza que deseja excluir este planejamento?")) {
+      return;
+    }
+
+    if (!planejamentoId) {
+      alert("ID do planejamento não encontrado.");
+      return;
+    }
+
+    try {
+      console.log(
+        "Fazendo requisição DELETE para:",
+        `http://localhost:3001/planejamentos/${planejamentoId}`
+      );
+
+      const response = await fetch(
+        `http://localhost:3001/planejamentos/${planejamentoId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      console.log("Resposta da API:", response.status, response.statusText);
+
+      if (!response.ok) {
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch (parseErr) {
+          console.error("Erro ao fazer parse da resposta de erro:", parseErr);
+          errorData = {
+            error: `Status ${response.status}: ${response.statusText}`,
+          };
+        }
+        console.error("Erro na resposta:", errorData);
+        console.error(
+          "Status da resposta:",
+          response.status,
+          response.statusText
+        );
+        throw new Error(
+          errorData.error ||
+            `Falha ao excluir planejamento. Status: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("Resultado da exclusão:", result);
+
+      // Atualiza a lista de status local para Pendente (usa dados do backend se disponíveis)
+      const r = result && result.reset ? result.reset : null;
+      const finalMes = r?.mes ?? mes;
+      const finalSemana = r?.semana ?? semana;
+      if (finalMes && finalSemana) {
+        const key = `${finalMes}-${finalSemana}`;
+        setPlanningStatuses((prev) => ({ ...prev, [key]: "Pendente" }));
+      }
+
+      // Fecha o modal
+      setModalInfo(null);
+      alert("Planejamento excluído e status resetado para Pendente.");
+    } catch (err) {
+      console.error("Erro ao excluir planejamento:", err);
+      console.error("Stack trace:", err.stack);
+      console.error("Erro completo:", JSON.stringify(err, null, 2));
+      alert(
+        `Erro: ${err.message || "Erro desconhecido ao excluir planejamento"}`
+      );
     }
   };
 
@@ -384,11 +470,19 @@ const PlanejamentosPage = () => {
               minWidth: "200px",
             }}
           >
-            {filteredTurmas.map((turma) => (
-              <option key={turma.id} value={turma.id}>
-                {turma.nome_turma}
-              </option>
-            ))}
+            {filteredTurmas.map((turma) => {
+              // Extrai o nome do primeiro professor da turma
+              const professorNome =
+                turma.professores && turma.professores.length > 0
+                  ? turma.professores[0].nome
+                  : "Sem professor";
+
+              return (
+                <option key={turma.id} value={turma.id}>
+                  {turma.nome_turma} - {professorNome}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
@@ -529,13 +623,14 @@ const PlanejamentosPage = () => {
           info={modalInfo}
           onClose={handleCloseModal}
           onUpdate={handleModalUpdate} // A prop onUpdate é suficiente para todas as atualizações
+          onDelete={handleDeletePlanning} // Passa a função de exclusão
         />
       )}
     </div>
   );
 };
 
-const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
+const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
   if (!info) return null;
 
   const { user } = useAuth();
@@ -589,13 +684,20 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
     try {
       const response = await fetch(
         `http://localhost:3001/planejamentos/${info.id_planejamento}/anexos`,
-        { method: "POST", body: formData }
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
       );
       if (!response.ok) throw new Error("Falha ao enviar anexo.");
 
       // Recarrega os dados do planejamento para obter a lista de anexos atualizada
       const refetchResponse = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`
+        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        {
+          credentials: "include",
+        }
       );
       const updatedPlanejamento = await refetchResponse.json();
       onUpdate(updatedPlanejamento); // Atualiza o estado no componente pai
@@ -615,12 +717,16 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
     try {
       const response = await fetch(`http://localhost:3001/anexos/${anexoId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!response.ok) throw new Error("Falha ao excluir anexo.");
 
       // Recarrega os dados do planejamento para refletir a exclusão
       const refetchResponse = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`
+        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        {
+          credentials: "include",
+        }
       );
       const updatedPlanejamento = await refetchResponse.json();
       onUpdate(updatedPlanejamento); // Atualiza o estado no componente pai
@@ -640,6 +746,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             usuario_id: user.userId,
             texto_comentario: newComment,
@@ -650,7 +757,10 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
 
       // Para obter o comentário com o nome do autor, buscamos o planejamento atualizado
       const refetchResponse = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`
+        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        {
+          credentials: "include",
+        }
       );
       const updatedPlanejamento = await refetchResponse.json();
       setComentarios(updatedPlanejamento.comentarios);
@@ -672,7 +782,10 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
     // Essa abordagem é mais robusta do que apenas filtrar o estado local.
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`
+        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        {
+          credentials: "include",
+        }
       );
       if (!response.ok) {
         throw new Error(
@@ -704,6 +817,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
         {
           method: "PUT", // A rota de status usa PUT
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           // A rota espera apenas o status no corpo
           body: JSON.stringify({ status: newStatus }),
         }
@@ -949,8 +1063,9 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
           </div>
         )}
 
-        {/* Botões de Ação */}
-        {(user.cargo === "admin" || user.cargo === "coordenador") && (
+        {/* Botões de Ação - Aprovar/Reprovar: Admin Pedagógico e Admin Geral */}
+        {(String(user.cargo).toLowerCase() === "administrador pedagógico" ||
+          String(user.cargo).toLowerCase() === "administrador geral") && (
           <div
             style={{
               display: "flex",
@@ -992,6 +1107,54 @@ const PlanejamentoModal = ({ info, onClose, onUpdate }) => {
             </button>
           </div>
         )}
+
+        {/* Botão Excluir - somente Administrador Geral */}
+        {(() => {
+          const userCargo = String(user?.cargo || "").toLowerCase();
+          const isAdminGeral = userCargo === "administrador geral";
+          console.log("Verificando se deve mostrar botão excluir:", {
+            userCargo: user?.cargo,
+            userCargoLower: userCargo,
+            isAdminGeral,
+            planejamentoId: info.id_planejamento,
+            planejamentoStatus: info.status,
+          });
+
+          return (
+            isAdminGeral && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginTop: "1rem",
+                }}
+              >
+                <button
+                  onClick={() => {
+                    console.log("Botão Excluir clicado!", {
+                      planejamentoId: info.id_planejamento,
+                      mes: info.mes,
+                      semana: info.semana,
+                    });
+                    onDelete(info.id_planejamento, info.mes, info.semana);
+                  }}
+                  style={{
+                    padding: "10px 20px",
+                    cursor: "pointer",
+                    backgroundColor: "#6b7280",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "1rem",
+                  }}
+                  type="button"
+                >
+                  Excluir Planejamento
+                </button>
+              </div>
+            )
+          );
+        })()}
       </div>
     </div>
   );

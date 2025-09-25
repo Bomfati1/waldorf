@@ -1,5 +1,6 @@
 // src/pages/ConfiguracoesPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
 import "../css/ConfiguracoesPage.css"; // Importando o novo CSS
 
 // Função para agrupar membros por cargo
@@ -15,6 +16,7 @@ const agruparPorCargo = (membros) => {
 };
 
 function ConfiguracoesPage() {
+  const { user, loading: authLoading } = useAuth();
   const [membros, setMembros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,9 +35,19 @@ function ConfiguracoesPage() {
   ];
 
   const fetchMembros = useCallback(async () => {
+    // Só busca se for admin geral
+    const isAdminGeral =
+      (user?.cargo || "").toLowerCase() === "administrador geral";
+    if (!isAdminGeral) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:3001/usuarios");
+      const response = await fetch("http://localhost:3001/usuarios", {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Falha ao buscar os membros da equipe.");
       }
@@ -48,7 +60,7 @@ function ConfiguracoesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.cargo]);
 
   useEffect(() => {
     fetchMembros();
@@ -70,6 +82,7 @@ function ConfiguracoesPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           nome: newMemberName,
           email: newMemberEmail,
@@ -114,6 +127,27 @@ function ConfiguracoesPage() {
       }
     }
   };
+
+  const isAdminGeral =
+    (user?.cargo || "").toLowerCase() === "administrador geral";
+
+  if (authLoading) {
+    return (
+      <div className="configuracoes-container">
+        <h1>Configurações</h1>
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!isAdminGeral) {
+    return (
+      <div className="configuracoes-container">
+        <h1>Configurações</h1>
+        <p>Você não tem permissão para acessar esta seção.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="configuracoes-container">
@@ -192,7 +226,7 @@ function ConfiguracoesPage() {
           </div>
         )}
 
-        {loading && <p>Carregando membros...</p>}
+        {loading && <p className="loading-message">Carregando membros...</p>}
         {error && (
           <p className="error-message">Erro ao carregar membros: {error}</p>
         )}

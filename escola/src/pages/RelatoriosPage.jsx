@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "../css/RelatoriosPage.css"; // Criaremos este arquivo CSS
+import "../css/RelatoriosPage.css";
 
 const RelatoriosPage = () => {
   // Estados para a lista de relatórios
@@ -22,7 +22,9 @@ const RelatoriosPage = () => {
   const fetchRelatorios = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/relatorios");
+      const response = await fetch("http://localhost:3001/relatorios", {
+        credentials: "include"
+      });
       if (!response.ok) {
         throw new Error("Falha ao buscar relatórios.");
       }
@@ -42,22 +44,40 @@ const RelatoriosPage = () => {
     // Busca alunos ativos para o select
     const fetchAlunos = async () => {
       try {
-        const res = await fetch("http://localhost:3001/alunos/ativos");
+        console.log("Buscando alunos ativos...");
+        const res = await fetch("http://localhost:3001/alunos/ativos", {
+          credentials: "include"
+        });
+        console.log("Resposta da busca de alunos:", res.status, res.statusText);
+        if (!res.ok) {
+          throw new Error(`Erro ${res.status}: ${res.statusText}`);
+        }
         const data = await res.json();
-        setAlunos(data);
+        console.log("Dados dos alunos recebidos:", data);
+        setAlunos(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Erro ao buscar alunos:", error);
+        setAlunos([]); // Garante que sempre seja um array
       }
     };
 
     // Busca turmas para o select
     const fetchTurmas = async () => {
       try {
-        const res = await fetch("http://localhost:3001/turmas");
+        console.log("Buscando turmas...");
+        const res = await fetch("http://localhost:3001/turmas", {
+          credentials: "include"
+        });
+        console.log("Resposta da busca de turmas:", res.status, res.statusText);
+        if (!res.ok) {
+          throw new Error(`Erro ${res.status}: ${res.statusText}`);
+        }
         const data = await res.json();
-        setTurmas(data);
+        console.log("Dados das turmas recebidos:", data);
+        setTurmas(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Erro ao buscar turmas:", error);
+        setTurmas([]); // Garante que sempre seja um array
       }
     };
 
@@ -101,6 +121,7 @@ const RelatoriosPage = () => {
       const response = await fetch("http://localhost:3001/relatorios/upload", {
         method: "POST",
         body: formData,
+        credentials: "include"
       });
 
       const data = await response.json();
@@ -128,6 +149,7 @@ const RelatoriosPage = () => {
     try {
       const response = await fetch(`http://localhost:3001/relatorios/${id}`, {
         method: "DELETE",
+        credentials: "include"
       });
 
       if (!response.ok) {
@@ -152,6 +174,14 @@ const RelatoriosPage = () => {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   return (
@@ -211,12 +241,23 @@ const RelatoriosPage = () => {
                 required
               >
                 <option value="">-- Selecione um aluno --</option>
-                {alunos.map((aluno) => (
-                  <option key={aluno.id} value={aluno.id}>
-                    {aluno.nome_completo}
+                {alunos && Array.isArray(alunos) && alunos.length > 0 ? (
+                  alunos.map((aluno) => (
+                    <option key={aluno.id} value={aluno.id}>
+                      {aluno.nome_completo}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>
+                    {alunos.length === 0 ? "Nenhum aluno encontrado" : "Carregando alunos..."}
                   </option>
-                ))}
+                )}
               </select>
+              {alunos.length === 0 && (
+                <p style={{ color: 'red', fontSize: '0.9rem', marginTop: '5px' }}>
+                  Nenhum aluno ativo encontrado. Verifique se há alunos cadastrados e ativos.
+                </p>
+              )}
             </div>
           )}
 
@@ -230,12 +271,23 @@ const RelatoriosPage = () => {
                 required
               >
                 <option value="">-- Selecione uma turma --</option>
-                {turmas.map((turma) => (
-                  <option key={turma.id} value={turma.id}>
-                    {turma.nome_turma}
+                {turmas && Array.isArray(turmas) && turmas.length > 0 ? (
+                  turmas.map((turma) => (
+                    <option key={turma.id} value={turma.id}>
+                      {turma.nome_turma}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>
+                    {turmas.length === 0 ? "Nenhuma turma encontrada" : "Carregando turmas..."}
                   </option>
-                ))}
+                )}
               </select>
+              {turmas.length === 0 && (
+                <p style={{ color: 'red', fontSize: '0.9rem', marginTop: '5px' }}>
+                  Nenhuma turma encontrada. Verifique se há turmas cadastradas.
+                </p>
+              )}
             </div>
           )}
 
@@ -257,6 +309,7 @@ const RelatoriosPage = () => {
                 <th>Nome do Arquivo</th>
                 <th>Tipo</th>
                 <th>Destino</th>
+                <th>Tamanho</th>
                 <th>Data de Upload</th>
                 <th>Ações</th>
               </tr>
@@ -267,9 +320,10 @@ const RelatoriosPage = () => {
                   <tr key={relatorio.id}>
                     <td>{relatorio.nome_original}</td>
                     <td className="capitalize">
-                      {relatorio.aluno_id ? "Aluno" : "Turma"}
+                      {relatorio.tipo_destino}
                     </td>
-                    <td>{relatorio.nome_aluno || relatorio.nome_turma}</td>
+                    <td>{relatorio.nome_destino}</td>
+                    <td>{formatFileSize(relatorio.tamanho_bytes)}</td>
                     <td>{formatDate(relatorio.data_upload)}</td>
                     <td>
                       <a
@@ -291,7 +345,7 @@ const RelatoriosPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5">Nenhum relatório encontrado.</td>
+                  <td colSpan="6">Nenhum relatório encontrado.</td>
                 </tr>
               )}
             </tbody>

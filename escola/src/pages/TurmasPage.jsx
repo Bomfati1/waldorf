@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import jsPDF from "jspdf";
 
 const TurmasPage = () => {
+  const { user } = useAuth();
   const [nivelSelecionado, setNivelSelecionado] = useState("jardim");
   const [selectedTurma, setSelectedTurma] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
@@ -10,13 +13,18 @@ const TurmasPage = () => {
   const [availableYears, setAvailableYears] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAlunosModal, setShowAlunosModal] = useState(false);
+  const [alunosDaTurma, setAlunosDaTurma] = useState([]);
+  const [loadingAlunos, setLoadingAlunos] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:3001/turmas");
+        const response = await fetch("http://localhost:3001/turmas", {
+          credentials: "include",
+        });
         if (!response.ok) {
           throw new Error("Falha ao buscar dados das turmas.");
         }
@@ -90,6 +98,44 @@ const TurmasPage = () => {
 
   const handleCloseModal = () => {
     setSelectedTurma(null);
+  };
+
+  const handleViewAlunos = async (turma) => {
+    setLoadingAlunos(true);
+    console.log("Buscando alunos para turma:", turma);
+    try {
+      const url = `http://localhost:3001/turmas/${turma.id}/alunos`;
+      console.log("URL da requisição:", url);
+
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log("Erro da resposta:", errorText);
+        throw new Error(
+          `Falha ao buscar alunos da turma. Status: ${response.status}`
+        );
+      }
+      const alunos = await response.json();
+      console.log("Alunos encontrados:", alunos);
+      setAlunosDaTurma(alunos);
+      setShowAlunosModal(true);
+    } catch (err) {
+      console.error("Erro ao buscar alunos:", err);
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setLoadingAlunos(false);
+    }
+  };
+
+  const handleCloseAlunosModal = () => {
+    setShowAlunosModal(false);
+    setAlunosDaTurma([]);
   };
 
   const baseButtonStyle = {
@@ -240,6 +286,17 @@ const TurmasPage = () => {
           turma={selectedTurma}
           onClose={handleCloseModal}
           onDelete={handleDeleteTurma}
+          onViewAlunos={handleViewAlunos}
+          user={user}
+        />
+      )}
+
+      {showAlunosModal && (
+        <AlunosModal
+          turma={selectedTurma}
+          alunos={alunosDaTurma}
+          onClose={handleCloseAlunosModal}
+          loading={loadingAlunos}
         />
       )}
     </div>
@@ -248,83 +305,8 @@ const TurmasPage = () => {
 
 // --- Componente do Modal ---
 
-const TurmaModal = ({ turma, onClose, onDelete }) => {
+const TurmaModal = ({ turma, onClose, onDelete, onViewAlunos, user }) => {
   const navigate = useNavigate();
-  const fileInputRef = React.useRef(null);
-  const [uploadTarget, setUploadTarget] = useState(null); // { type: 'turma' } ou { type: 'aluno', id: alunoId, nome: 'Nome Aluno' }
-
-  const handleAttachReportClick = (target) => {
-    setUploadTarget(target);
-    fileInputRef.current.click();
-  };
-
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !uploadTarget) return;
-
-    const targetName =
-      uploadTarget.type === "turma"
-        ? `turma ${turma.nome_turma}`
-        : `aluno(a) ${uploadTarget.nome}`;
-
-    if (
-      !window.confirm(
-        `Deseja anexar o arquivo "${file.name}" para ${targetName}?`
-      )
-    ) {
-      // Limpa o input se o usuário cancelar
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      setUploadTarget(null);
-      return;
-    }
-
-    // --- Início da Lógica de Upload para o Backend ---
-    const formData = new FormData();
-    // 'relatorio' é o nome do campo que o backend (ex: multer) vai esperar
-    formData.append("relatorio", file);
-    formData.append("tipo", uploadTarget.type); // 'turma' ou 'aluno'
-
-    if (uploadTarget.type === "turma") {
-      formData.append("turmaId", turma.id);
-    } else {
-      formData.append("alunoId", uploadTarget.id);
-    }
-
-    try {
-      // Opcional: Adicionar um estado de loading para feedback visual
-      // setLoadingUpload(true);
-      alert(`Enviando o arquivo "${file.name}"...`); // Feedback temporário
-
-      const response = await fetch("http://localhost:3001/relatorios/upload", {
-        method: "POST",
-        body: formData,
-        // Nota: Não defina o header 'Content-Type'. O navegador o define
-        // automaticamente como 'multipart/form-data' com o boundary correto.
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Falha no upload do arquivo.");
-      }
-
-      alert(`Sucesso! Arquivo "${file.name}" anexado para ${targetName}.`);
-      console.log("Resposta do servidor:", result);
-    } catch (err) {
-      console.error("Erro no upload:", err);
-      alert(`Erro ao enviar o arquivo: ${err.message}`);
-    } finally {
-      // Limpa o input e o target após a tentativa de upload
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      setUploadTarget(null);
-      // setLoadingUpload(false);
-    }
-    // --- Fim da Lógica de Upload ---
-  };
 
   const handleModalContentClick = (e) => {
     e.stopPropagation();
@@ -364,13 +346,6 @@ const TurmaModal = ({ turma, onClose, onDelete }) => {
         }}
         onClick={handleModalContentClick}
       >
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          style={{ display: "none" }}
-          accept=".pdf,.doc,.docx,.jpg,.png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        />
         <div
           style={{
             display: "flex",
@@ -408,33 +383,12 @@ const TurmaModal = ({ turma, onClose, onDelete }) => {
                     padding: "12px 8px",
                     borderBottom: "1px solid #f0f0f0",
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "center",
                   }}
                 >
                   <span>
                     {index + 1}. {aluno.nome_completo}
                   </span>
-                  <button
-                    onClick={() =>
-                      handleAttachReportClick({
-                        type: "aluno",
-                        id: aluno.id,
-                        nome: aluno.nome_completo,
-                      })
-                    }
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                      border: "1px solid #6c757d",
-                      backgroundColor: "#fff",
-                      color: "#6c757d",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    Anexar Relatório
-                  </button>
                 </li>
               ))}
             </ul>
@@ -448,66 +402,471 @@ const TurmaModal = ({ turma, onClose, onDelete }) => {
             paddingTop: "1.5rem",
             borderTop: "1px solid #eee",
             display: "flex",
-            justifyContent: "flex-end",
+            justifyContent: "space-between",
+            alignItems: "center",
             gap: "1rem",
-            flexWrap: "wrap", // Adicionado para melhor responsividade
+            flexWrap: "wrap",
           }}
         >
+          {/* Botão de excluir só aparece para administradores */}
+          {user && user.cargo && user.cargo.toLowerCase() !== "professor" && (
+            <button
+              onClick={handleDelete}
+              style={{
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "none",
+                backgroundColor: "#dc3545",
+                color: "white",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              Excluir Turma
+            </button>
+          )}
+
+          {/* Grupo de botões principais */}
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            {/* Botão Ver Alunos */}
+            <button
+              onClick={() => onViewAlunos(turma)}
+              style={{
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "none",
+                backgroundColor: "#007bff",
+                color: "white",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              Ver Alunos ({turma.alunos_count})
+            </button>
+
+            {/* Botão Ver Histórico de Presença */}
+            <button
+              onClick={() =>
+                navigate(`/home/turmas/${turma.id}/historico-presenca`)
+              }
+              style={{
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "1px solid #6c757d",
+                backgroundColor: "#fff",
+                color: "#6c757d",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              Histórico de Presença
+            </button>
+
+            {/* Botão Registrar Presença */}
+            <button
+              onClick={() => navigate(`/home/turmas/${turma.id}/presenca`)}
+              style={{
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "none",
+                backgroundColor: "#28a745",
+                color: "white",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              Registrar Presença
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Componente do Modal de Alunos ---
+
+const AlunosModal = ({ turma, alunos, onClose, loading }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return new Date(
+      date.getTime() + date.getTimezoneOffset() * 60000
+    ).toLocaleDateString("pt-BR");
+  };
+
+  const generateAlunosPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPosition = 20;
+
+    // Cabeçalho do relatório
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("RELATÓRIO DE ALUNOS DA TURMA", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 15;
+
+    // Informações da turma
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("TURMA:", 20, yPosition);
+    doc.setFont("helvetica", "normal");
+    doc.text(turma?.nome_turma || "N/A", 45, yPosition);
+    yPosition += 10;
+
+    // Ano letivo
+    doc.setFont("helvetica", "bold");
+    doc.text("ANO LETIVO:", 20, yPosition);
+    doc.setFont("helvetica", "normal");
+    doc.text(turma?.ano_letivo?.toString() || "N/A", 55, yPosition);
+    yPosition += 12;
+
+    // Período
+    doc.setFont("helvetica", "bold");
+    doc.text("PERÍODO:", 20, yPosition);
+    doc.setFont("helvetica", "normal");
+    doc.text(turma?.periodo || "N/A", 50, yPosition);
+    yPosition += 12;
+
+    // Professores
+    if (turma?.professores && turma.professores.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.text("PROFESSOR(ES):",20, yPosition);
+      doc.setFont("helvetica", "normal");
+      const professores = turma.professores.map(p => p.nome).join(", ");
+      
+      // Verifica se o texto é muito longo e quebra em múltiplas linhas se necessário
+      const maxWidth = pageWidth - 70; // Largura máxima disponível
+      const lines = doc.splitTextToSize(professores, maxWidth);
+      
+      if (lines.length === 1) {
+        // Se cabe em uma linha, coloca na mesma linha do label
+        doc.text(professores, 65, yPosition);
+        yPosition += 12;
+      } else {
+        // Se precisa de múltiplas linhas, coloca na linha seguinte
+        yPosition += 6;
+        doc.text(lines, 20, yPosition);
+        yPosition += (lines.length * 6) + 6;
+      }
+    }
+
+    // Resumo
+    yPosition += 10;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("RESUMO:", 20, yPosition);
+    yPosition += 8;
+
+    doc.setFont("helvetica", "normal");
+    doc.text(`• Total de Alunos: ${alunos.length}`, 25, yPosition);
+    yPosition += 6;
+
+    // Contar alunos ativos e inativos
+    const alunosAtivos = alunos.filter(a => a.status_aluno).length;
+    const alunosInativos = alunos.length - alunosAtivos;
+    doc.text(`• Alunos Ativos: ${alunosAtivos}`, 25, yPosition);
+    yPosition += 6;
+    doc.text(`• Alunos Inativos: ${alunosInativos}`, 25, yPosition);
+    yPosition += 6;
+
+    // Contar status de pagamento
+    const emDia = alunos.filter(a => a.status_pagamento?.toLowerCase() === 'em_dia').length;
+    const atrasado = alunos.filter(a => a.status_pagamento?.toLowerCase() === 'atrasado').length;
+    const isento = alunos.filter(a => a.status_pagamento?.toLowerCase() === 'isento').length;
+    
+    doc.text(`• Pagamentos em Dia: ${emDia}`, 25, yPosition);
+    yPosition += 6;
+    doc.text(`• Pagamentos Atrasados: ${atrasado}`, 25, yPosition);
+    yPosition += 6;
+    doc.text(`• Isentos: ${isento}`, 25, yPosition);
+    yPosition += 15;
+
+    // Tabela de alunos
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("LISTA DE ALUNOS:", 20, yPosition);
+    yPosition += 10;
+
+    // Cabeçalho da tabela
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Nº", 20, yPosition);
+    doc.text("NOME", 30, yPosition);
+    doc.text("NASCIMENTO", 80, yPosition);
+    doc.text("STATUS", 110, yPosition);
+    doc.text("PAGAMENTO", 130, yPosition);
+    doc.text("RESPONSÁVEL", 160, yPosition);
+    yPosition += 8;
+
+    // Linha separadora
+    doc.line(20, yPosition, pageWidth - 20, yPosition);
+    yPosition += 5;
+
+    // Dados dos alunos
+    doc.setFont("helvetica", "normal");
+    alunos.forEach((aluno, index) => {
+      // Verifica se precisa de nova página
+      if (yPosition > pageHeight - 30) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.text((index + 1).toString(), 20, yPosition);
+      
+      // Nome (limitado a 25 caracteres)
+      const nome = aluno.nome_completo.length > 25 
+        ? aluno.nome_completo.substring(0, 25) + "..." 
+        : aluno.nome_completo;
+      doc.text(nome, 30, yPosition);
+      
+      // Data de nascimento
+      doc.text(formatDate(aluno.data_nascimento), 80, yPosition);
+      
+      // Status
+      const status = aluno.status_aluno ? "Ativo" : "Inativo";
+      doc.text(status, 110, yPosition);
+      
+      // Status de pagamento
+      const pagamento = getPaymentStatusText(aluno.status_pagamento);
+      doc.text(pagamento, 130, yPosition);
+      
+      // Responsável (limitado a 20 caracteres)
+      const responsavel = aluno.responsavel_nome || "N/A";
+      const responsavelLimitado = responsavel.length > 20 
+        ? responsavel.substring(0, 20) + "..." 
+        : responsavel;
+      doc.text(responsavelLimitado, 160, yPosition);
+      
+      yPosition += 6;
+    });
+
+    // Rodapé
+    yPosition = pageHeight - 20;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Relatório gerado automaticamente pelo Sistema Escola", pageWidth / 2, yPosition, { align: "center" });
+    doc.text(`Data de geração: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, pageWidth / 2, yPosition + 5, { align: "center" });
+
+    // Salva o PDF
+    const fileName = `relatorio_alunos_${turma?.nome_turma?.replace(/\s+/g, '_') || 'turma'}_${turma?.ano_letivo || 'ano'}.pdf`;
+    doc.save(fileName);
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value || 0);
+  };
+
+  const getStatusColor = (status) => {
+    return status ? "#28a745" : "#dc3545";
+  };
+
+  const getStatusText = (status) => {
+    return status ? "Ativo" : "Inativo";
+  };
+
+  const getPaymentStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "em_dia":
+        return "#28a745";
+      case "atrasado":
+        return "#dc3545";
+      case "isento":
+        return "#007bff";
+      default:
+        return "#6c757d";
+    }
+  };
+
+  const getPaymentStatusText = (status) => {
+    switch (status?.toLowerCase()) {
+      case "em_dia":
+        return "Em dia";
+      case "atrasado":
+        return "Atrasado";
+      case "isento":
+        return "Isento";
+      default:
+        return "N/A";
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          backgroundColor: "white",
+          borderRadius: "12px",
+          padding: "2rem",
+          width: "90%",
+          maxWidth: "1000px",
+          maxHeight: "80vh",
+          overflow: "auto",
+          position: "relative",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            marginBottom: "1.5rem",
+            borderBottom: "1px solid #eee",
+            paddingBottom: "1rem",
+          }}
+        >
+          <h2 style={{ margin: 0, color: "#333" }}>
+            Alunos da Turma: {turma?.nome_turma}
+          </h2>
+          <p style={{ margin: "0.5rem 0 0 0", color: "#666" }}>
+            {turma?.ano_letivo} • {turma?.periodo} • {alunos.length} aluno(s)
+          </p>
+        </div>
+
+        {/* Loading */}
+        {loading && (
+          <div style={{ textAlign: "center", padding: "2rem" }}>
+            <p>Carregando alunos...</p>
+          </div>
+        )}
+
+        {/* Lista de Alunos */}
+        {!loading && alunos.length > 0 && (
+          <div style={{ display: "grid", gap: "1rem" }}>
+            {alunos.map((aluno) => (
+              <div
+                key={aluno.id}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  padding: "1.5rem",
+                  backgroundColor: "#f9f9f9",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "1rem",
+                  }}
+                >
+                  <div>
+                    <h4 style={{ margin: "0 0 0.5rem 0", color: "#333" }}>
+                      {aluno.nome_completo}
+                    </h4>
+                    <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                      <strong>Data de Nascimento:</strong>{" "}
+                      {formatDate(aluno.data_nascimento)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                      <strong>Status:</strong>{" "}
+                      <span
+                        style={{ color: getStatusColor(aluno.status_aluno) }}
+                      >
+                        {getStatusText(aluno.status_aluno)}
+                      </span>
+                    </p>
+                    <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                      <strong>Pagamento:</strong>{" "}
+                      <span
+                        style={{
+                          color: getPaymentStatusColor(aluno.status_pagamento),
+                        }}
+                      >
+                        {getPaymentStatusText(aluno.status_pagamento)}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div>
+                    {aluno.responsavel_nome && (
+                      <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                        <strong>Responsável:</strong> {aluno.responsavel_nome}
+                      </p>
+                    )}
+                    {aluno.responsavel_telefone && (
+                      <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                        <strong>Telefone:</strong> {aluno.responsavel_telefone}
+                      </p>
+                    )}
+                    {aluno.responsavel_email && (
+                      <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                        <strong>Email:</strong> {aluno.responsavel_email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Mensagem quando não há alunos */}
+        {!loading && alunos.length === 0 && (
+          <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+            <p>Nenhum aluno encontrado nesta turma.</p>
+          </div>
+        )}
+
+        {/* Botões */}
+        <div style={{ marginTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button
-            onClick={handleDelete}
+            onClick={generateAlunosPDF}
+            disabled={loading || alunos.length === 0}
             style={{
-              padding: "10px 16px",
-              cursor: "pointer",
-              border: "none",
+              padding: "10px 20px",
               backgroundColor: "#dc3545",
               color: "white",
-              borderRadius: "6px",
-              marginRight: "auto", // Empurra este botão para a esquerda
-            }}
-          >
-            Excluir Turma
-          </button>
-
-          <button
-            onClick={() => handleAttachReportClick({ type: "turma" })}
-            style={{
-              padding: "10px 16px",
-              cursor: "pointer",
-              border: "1px solid #17a2b8",
-              backgroundColor: "#fff",
-              color: "#17a2b8",
-              borderRadius: "6px",
-            }}
-          >
-            Anexar Relatório da Turma
-          </button>
-          <button
-            onClick={() =>
-              navigate(`/home/turmas/${turma.id}/historico-presenca`)
-            }
-            style={{
-              padding: "10px 16px",
-              cursor: "pointer",
-              border: "1px solid #007bff",
-              backgroundColor: "#fff",
-              color: "#007bff",
-              borderRadius: "6px",
-            }}
-          >
-            Ver Histórico de Presença
-          </button>
-          <button
-            onClick={() => navigate(`/home/turmas/${turma.id}/presenca`)}
-            style={{
-              padding: "10px 16px",
-              cursor: "pointer",
               border: "none",
-              backgroundColor: "#28a745",
-              color: "white",
               borderRadius: "6px",
+              cursor: alunos.length === 0 ? "not-allowed" : "pointer",
+              opacity: alunos.length === 0 ? 0.6 : 1,
+              fontSize: "14px",
+              fontWeight: "500",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
             }}
           >
-            Registrar Presença
+            📄 Gerar PDF
+          </button>
+          
+          <button
+            onClick={onClose}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
+          >
+            Fechar
           </button>
         </div>
       </div>

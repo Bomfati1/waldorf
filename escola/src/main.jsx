@@ -12,6 +12,7 @@ import PreMatriculaPage from "./pages/PreMatriculaPage";
 import TurmasPage from "./pages/TurmasPage";
 import PresencaPage from "./pages/PresencaPage";
 import HistoricoPresencaPage from "./pages/HistoricoPresencaPage";
+import HistoricoAlunoPresencaPage from "./pages/HistoricoAlunoPresencaPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import PerfilPage from "./pages/PerfilPage";
 import FamiliasPage from "./pages/FamiliasPage";
@@ -22,12 +23,22 @@ import ResponsaveisPage from "./pages/ResponsaveisPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import InteressadosDashboardPage from "./pages/InteressadosDashboardPage"; // Importe o novo componente
 import EditarResponsavelPage from "./pages/EditarResponsavelPage";
+import ResetarSenhaPage from "./pages/ResetarSenhaPage";
+import RecuperarSenhaPage from "./pages/RecuperarSenhaPage";
 
 // Definindo as rotas usando a API moderna do React Router
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Login />,
+  },
+  {
+    path: "/recuperar-senha",
+    element: <RecuperarSenhaPage />,
+  },
+  {
+    path: "/resetar-senha",
+    element: <ResetarSenhaPage />,
   },
   {
     path: "/home",
@@ -56,6 +67,10 @@ const router = createBrowserRouter([
       {
         path: "turmas/:turmaId/historico-presenca",
         element: <HistoricoPresencaPage />,
+      },
+      {
+        path: "historico-aluno-presenca/:turmaId?",
+        element: <HistoricoAlunoPresencaPage />,
       },
       {
         path: "configuracoes",

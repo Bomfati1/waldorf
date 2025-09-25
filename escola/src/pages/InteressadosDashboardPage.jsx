@@ -30,6 +30,7 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedYear, setSelectedYear] = useState("");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -37,13 +38,27 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
       setError(null);
       try {
         const response = await fetch(
-          "http://localhost:3001/interessados/dashboard-summary"
+          "http://localhost:3001/interessados/dashboard-summary",
+          {
+            credentials: "include",
+          }
         );
         if (!response.ok) {
           throw new Error("Falha ao buscar dados do dashboard.");
         }
         const data = await response.json();
-        setDashboardData(data); // A resposta agora é um objeto { statusCounts: [], channelCounts: [] }
+        setDashboardData(data); // A resposta agora é um objeto { statusCounts: [], channelCounts: [], monthlyPerformance: [] }
+        // Define ano padrão (último ano disponível nos dados de monthlyPerformance)
+        const years = Array.from(
+          new Set(
+            (data.monthlyPerformance || []).map((item) =>
+              String(item.month).split("-")[0]
+            )
+          )
+        ).sort();
+        if (years.length > 0) {
+          setSelectedYear(years[years.length - 1]);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -67,27 +82,6 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
     if (error) return <p style={{ color: "red" }}>Erro: {error}</p>;
     if (!dashboardData) return <p>Nenhum dado encontrado.</p>;
 
-    // Dados para o Gráfico de Pizza (Status)
-    const statusPieData = {
-      labels: dashboardData.statusCounts.map((item) => item.status),
-      datasets: [
-        {
-          label: "Interessados",
-          data: dashboardData.statusCounts.map((item) => item.count),
-          backgroundColor: [
-            "#17a2b8", // Entrou Em Contato
-            "#007bff", // Conversando
-            "#fd7e14", // Negociando
-            "#ffc107", // Visita Agendada
-            "#28a745", // Ganho
-            "#dc3545", // Perdido
-          ],
-          borderColor: "#ffffff",
-          borderWidth: 2,
-        },
-      ],
-    };
-
     // Dados para o Gráfico de Barras (Canais)
     const channelBarData = {
       labels: dashboardData.channelCounts.map((item) => item.como_conheceu),
@@ -102,9 +96,15 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
       ],
     };
 
+    // Filtro por ano para desempenho mensal
+    const filteredMonthly = (dashboardData.monthlyPerformance || []).filter(
+      (item) =>
+        !selectedYear || String(item.month).startsWith(String(selectedYear))
+    );
+
     // Dados para o Gráfico de Barras (Desempenho Mensal)
     const monthlyPerformanceData = {
-      labels: dashboardData.monthlyPerformance.map((item) => {
+      labels: filteredMonthly.map((item) => {
         const [year, month] = item.month.split("-");
         return new Date(year, month - 1).toLocaleString("pt-BR", {
           month: "short",
@@ -114,7 +114,7 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
       datasets: [
         {
           label: "Ganhos",
-          data: dashboardData.monthlyPerformance.map((item) =>
+          data: filteredMonthly.map((item) =>
             parseInt(item.ganhos, 10)
           ),
           backgroundColor: "rgba(40, 167, 69, 0.7)",
@@ -123,7 +123,7 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
         },
         {
           label: "Perdidos",
-          data: dashboardData.monthlyPerformance.map((item) =>
+          data: filteredMonthly.map((item) =>
             parseInt(item.perdidos, 10)
           ),
           backgroundColor: "rgba(220, 53, 69, 0.7)",
@@ -137,41 +137,60 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
+          gridTemplateColumns: "1fr",
           gap: "1.5rem",
         }}
       >
-        <div style={chartContainerStyle}>
-          <h3 style={{ textAlign: "center", marginBottom: "1rem" }}>
-            Distribuição por Status
-          </h3>
-          {dashboardData.statusCounts.length > 0 ? (
-            <Pie
-              data={statusPieData}
-              options={{ responsive: true, maintainAspectRatio: true }}
-            />
-          ) : (
-            <p>Sem dados de status.</p>
-          )}
-        </div>
-
-        <div style={chartContainerStyle}>
+        <div style={{ ...chartContainerStyle }}>
           <h3 style={{ textAlign: "center", marginBottom: "1rem" }}>
             Canais de Aquisição
           </h3>
           {dashboardData.channelCounts.length > 0 ? (
-            <Bar data={channelBarData} options={{ responsive: true }} />
+            <div style={{ height: isEmbedded ? 420 : 520 }}>
+              <Bar
+                data={channelBarData}
+                options={{ responsive: true, maintainAspectRatio: false }}
+              />
+            </div>
           ) : (
             <p>Sem dados de canais.</p>
           )}
         </div>
 
-        <div style={{ ...chartContainerStyle, gridColumn: "1 / -1" }}>
-          <h3 style={{ textAlign: "center", marginBottom: "1rem" }}>
-            Evolução Mensal (Ganhos e Perdidos)
-          </h3>
+        <div style={{ ...chartContainerStyle }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h3 style={{ margin: 0 }}>Evolução Mensal (Ganhos e Perdidos)</h3>
+            <div>
+              <label htmlFor="yearSelect" style={{ marginRight: 8 }}>Ano:</label>
+              <select
+                id="yearSelect"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc" }}
+              >
+                {Array.from(
+                  new Set(
+                    (dashboardData.monthlyPerformance || []).map((item) =>
+                      String(item.month).split("-")[0]
+                    )
+                  )
+                )
+                  .sort()
+                  .map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
           {dashboardData.monthlyPerformance.length > 0 ? (
-            <Bar data={monthlyPerformanceData} options={{ responsive: true }} />
+            <div style={{ height: isEmbedded ? 420 : 520 }}>
+              <Bar
+                data={monthlyPerformanceData}
+                options={{ responsive: true, maintainAspectRatio: false }}
+              />
+            </div>
           ) : (
             <p>Sem dados de desempenho mensal para exibir.</p>
           )}

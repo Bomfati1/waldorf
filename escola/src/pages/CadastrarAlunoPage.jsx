@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import "../css/CadastrarAlunoPage.css"; // Importar o CSS
 import { useNavigate } from "react-router-dom";
+import ImportDropdown from "../components/ImportDropdown";
+import "../css/ImportDropdown.css";
 
 const CadastrarAlunoPage = () => {
   // Estado único para todos os campos do formulário
@@ -62,6 +64,40 @@ const CadastrarAlunoPage = () => {
   return (
     <div className="cadastrar-aluno-container">
       <h1>Cadastrar Novo Aluno</h1>
+      
+      <ImportDropdown
+        buttonText="Importar via Excel"
+        buttonIcon="📊"
+        options={[
+          {
+            icon: "🎓",
+            title: "Importar Alunos",
+            endpoint: "/alunos/upload-excel",
+            acceptedColumns: [
+              { name: "Nome Completo Aluno", description: "Nome completo do aluno", required: true },
+              { name: "Data Nascimento", description: "Data de nascimento do aluno (formato: YYYY-MM-DD)", required: true },
+              { name: "Informações Saúde", description: "Informações de saúde do aluno (opcional)", required: false },
+              { name: "Status Pagamento", description: "Status do pagamento (Integral ou Bolsista)", required: false },
+              { name: "Nome Responsável", description: "Nome completo do responsável", required: true },
+              { name: "Telefone", description: "Número de telefone do responsável", required: true },
+              { name: "Email", description: "Endereço de email do responsável", required: true },
+              { name: "Outro Telefone", description: "Número de telefone secundário (opcional)", required: false },
+              { name: "RG", description: "Número do RG do responsável (opcional)", required: false },
+              { name: "CPF", description: "Número do CPF do responsável (opcional)", required: false }
+            ],
+            description: "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos alunos de uma vez. O sistema criará automaticamente novos registros de alunos e responsáveis na base de dados.",
+            buttonText: "Importar Alunos",
+            onSuccess: (data) => {
+              // Redirecionar para a lista de alunos após importação bem-sucedida
+              setTimeout(() => navigate("/home/alunos"), 2000);
+            },
+            onError: (data) => {
+              console.error("Erro na importação:", data);
+            }
+          }
+        ]}
+      />
+
       <form onSubmit={handleSubmit} className="aluno-form">
         {error && <p className="form-error">{error}</p>}
         {success && <p className="form-success">{success}</p>}

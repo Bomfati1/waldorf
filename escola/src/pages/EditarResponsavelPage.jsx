@@ -125,12 +125,28 @@ const EditarResponsavelPage = () => {
     const fetchResponsavel = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3001/responsaveis/${id}`
+          `http://localhost:3001/responsaveis/${id}`,
+          {
+            credentials: "include",
+          }
         );
+
         if (!response.ok) {
-          throw new Error("Responsável não encontrado.");
+          if (response.status === 401) {
+            throw new Error("Usuário não autenticado. Faça login novamente.");
+          } else if (response.status === 404) {
+            throw new Error("Responsável não encontrado.");
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+              errorData.error ||
+                `Erro ${response.status}: ${response.statusText}`
+            );
+          }
         }
+
         const data = await response.json();
+
         setResponsavelData({
           nome_completo: data.nome_completo || "",
           email: data.email || "",
@@ -146,7 +162,18 @@ const EditarResponsavelPage = () => {
       }
     };
 
-    fetchResponsavel();
+    if (id) {
+      // Verifica se o ID é um número válido
+      if (isNaN(id) || id <= 0) {
+        setError("ID do responsável inválido.");
+        setLoading(false);
+        return;
+      }
+      fetchResponsavel();
+    } else {
+      setError("ID do responsável não fornecido.");
+      setLoading(false);
+    }
   }, [id]);
 
   const handleChange = (e) => {
@@ -165,12 +192,22 @@ const EditarResponsavelPage = () => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(responsavelData),
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Falha ao atualizar o responsável.");
+        const errData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          throw new Error("Usuário não autenticado. Faça login novamente.");
+        } else if (response.status === 404) {
+          throw new Error("Responsável não encontrado.");
+        } else {
+          throw new Error(
+            errData.error ||
+              `Erro ${response.status}: Falha ao atualizar o responsável.`
+          );
+        }
       }
 
       alert("Responsável atualizado com sucesso!");
