@@ -1,0 +1,83 @@
+openapi: 3.0.0
+info:
+  title: API Escola - Swagger
+  version: 1.0.0
+  description: Documentação Swagger da API do projeto Escola
+servers:
+  - url: http://localhost:3001
+paths:
+  /:
+    get:
+      summary: Endpoint de teste
+      responses:
+        "200":
+          description: OK
+
+  /login:
+    post:
+      summary: Login do usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                rememberMe:
+                  type: boolean
+      responses:
+        "200":
+          description: Login realizado com sucesso
+        "401":
+          description: Credenciais inválidas
+
+  /register:
+    post:
+      summary: Registrar novo usuário (apenas administradores)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                cargo:
+                  type: string
+      responses:
+        "201":
+          description: Usuário registrado com sucesso
+        "400":
+          description: Dados inválidos
+        "409":
+          description: E-mail já cadastrado
+
+  /alunos/ativos:
+    get:
+      summary: Listar alunos ativos
+      responses:
+        "200":
+          description: Lista de alunos ativos
+
+  /alunos/inativos:
+    get:
+      summary: Listar alunos inativos
+      responses:
+        "200":
+          description: Lista de alunos inativos
+
+  /turmas:
+    get:
+      summary: Listar turmas
+      responses:
+        "200":
+          description: Lista de turmas

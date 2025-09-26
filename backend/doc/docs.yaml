@@ -1,0 +1,14 @@
+openapi: 3.0.0
+info:
+  title: API Escola
+  version: 1.0.0
+  description: Documentação da API do projeto Escola
+servers:
+  - url: http://localhost:3000
+paths:
+  /:
+    get:
+      summary: Endpoint de teste
+      responses:
+        "200":
+          description: OK

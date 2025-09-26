@@ -2,6 +2,53 @@
 
 Aplicação web para gestão de interessados e pré‑matrículas, com painel (dashboard), importação via Excel e integração com Google Forms.
 
+## Instalação e Ambiente Recomendado
+
+**Node.js:**
+
+- Use Node.js **18.x** (LTS) para garantir compatibilidade com todas as dependências, especialmente o `bcrypt`.
+  - Outras versões podem causar erro de hash/senha.
+  - [Download Node.js 18.x LTS](https://nodejs.org/en/download/releases)
+
+**PostgreSQL:**
+
+- Recomendado: **PostgreSQL 13+**
+
+**Dependências principais:**
+
+- Backend:
+  - `bcrypt@6.0.0` (atenção: versões diferentes podem gerar hashes incompatíveis)
+  - `express@5.1.0`, `pg@8.16.3`, `jsonwebtoken@9.0.2`, `swagger-ui-express@5.0.1`, `yamljs@0.3.0`
+- Frontend:
+  - `react@18.2.0`, `vite@7.0.6`, `axios@1.11.0`, `react-router-dom@7.7.1`
+
+**Dica importante sobre autenticação:**
+
+- Se você encontrar problemas de login/senha ao migrar para outro PC, verifique se a versão do `bcrypt` instalada é a **6.0.0** e se o Node.js está na versão 18.x. Hashes gerados em versões diferentes podem não ser compatíveis!
+
+**Instalação rápida:**
+
+1. Clone o repositório e instale as dependências do backend:
+   ```bash
+   cd backend
+   npm install
+   # (confira se o bcrypt instalado é 6.0.0)
+   npm start
+   ```
+2. Instale as dependências do frontend:
+
+   ```bash
+   cd ../escola
+   npm install
+   npm run dev
+   ```
+
+3. Configure o banco de dados PostgreSQL conforme o .env de exemplo.
+
+4. Acesse o frontend em `http://localhost:5173` e o backend em `http://localhost:3001`.
+
+5. Documentação das rotas disponível em `http://localhost:3001/api-docs` (Swagger UI).
+
 ## Visão geral
 
 - Frontend em React (Vite) localizado em `escola/`
@@ -25,11 +72,14 @@ Aplicação web para gestão de interessados e pré‑matrículas, com painel (d
 - Node.js 18+
 - PostgreSQL 13+
 
+**Atenção:** Outras versões de Node.js ou bcrypt podem causar problemas de autenticação!
+
 ## Configuração do Backend
 
-1) Crie um arquivo `.env` em `backend/` com as variáveis (duas formas suportadas):
+1. Crie um arquivo `.env` em `backend/` com as variáveis (duas formas suportadas):
 
 Usando DATABASE_URL:
+
 ```
 DATABASE_URL=postgres://usuario:senha@host:5432/banco
 PGSSL=true
@@ -38,6 +88,7 @@ PORT=3001
 ```
 
 Ou usando variáveis individuais:
+
 ```
 PGHOST=localhost
 PGPORT=5432
@@ -49,7 +100,8 @@ JWT_SECRET=um_segredo_forte
 PORT=3001
 ```
 
-2) Instale as dependências e rode:
+2. Instale as dependências e rode:
+
 ```
 cd backend
 npm install
@@ -61,6 +113,7 @@ O backend ficará disponível em `http://localhost:3001`.
 ### Endpoints principais
 
 - Autenticados (exigem cookie de sessão):
+
   - `GET /interessados` – lista interessados
   - `POST /interessados` – cria interessado (status padrão: "Entrou Em Contato")
   - `PUT /interessados/:id` – atualização parcial (mantém campos não enviados)
@@ -83,7 +136,8 @@ O webhook tenta converter o "Carimbo de data/hora" do Forms para ISO UTC e usa c
 
 ## Configuração do Frontend
 
-1) Instale dependências e rode:
+1. Instale dependências e rode:
+
 ```
 cd escola
 npm install
@@ -120,11 +174,13 @@ Colunas recomendadas: Nome, Email (opcional), Telefone, Data (YYYY-MM-DD), Statu
 ## Scripts úteis
 
 Backend:
+
 ```
 npm start       # inicia o servidor
 ```
 
 Frontend:
+
 ```
 npm run dev     # inicia o Vite em modo dev
 npm run build   # build de produção

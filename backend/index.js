@@ -12,6 +12,10 @@ const xlsx = require("xlsx"); // Para ler arquivos Excel
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
+// Swagger UI e YAML
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+const swaggerDocument = YAML.load(path.join(__dirname, "doc", "swagger.yaml"));
 // Inicializa o aplicativo Express
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3001; // Define a porta em que o servidor vai rodar
@@ -31,6 +35,9 @@ app.use(
 ); // Habilita o CORS para permitir requisições do frontend
 app.use(express.json()); // Permite que o servidor entenda JSON no corpo das requisições
 app.use(cookieParser()); // Permite que o servidor leia cookies
+
+// Rota da documentação Swagger
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Utilitário opcional para envio de email (carregado sob demanda)
 async function sendResetEmail(to, resetLink) {
@@ -663,7 +670,9 @@ app.post("/interessados", authenticateToken, async (req, res) => {
     } else if (normalized.toLowerCase() === "indicacao") {
       como_conheceu = "Indicação";
     } else if (
-      allowedComoConheceu.map((v) => v.toLowerCase()).includes(normalized.toLowerCase())
+      allowedComoConheceu
+        .map((v) => v.toLowerCase())
+        .includes(normalized.toLowerCase())
     ) {
       const idx = allowedComoConheceu
         .map((v) => v.toLowerCase())
@@ -742,7 +751,8 @@ app.put("/interessados/:id", authenticateToken, async (req, res) => {
   nome = typeof nome === "string" ? nome : current.nome;
   telefone = typeof telefone === "string" ? telefone : current.telefone;
   status = typeof status === "string" ? status : current.status;
-  data_contato = typeof data_contato === "string" ? data_contato : current.data_contato;
+  data_contato =
+    typeof data_contato === "string" ? data_contato : current.data_contato;
 
   // Normaliza 'como_conheceu' se enviado; caso contrário mantém atual
   if (typeof como_conheceu === "string") {
@@ -752,14 +762,7 @@ app.put("/interessados/:id", authenticateToken, async (req, res) => {
     } else if (normalized.toLowerCase() === "indicacao") {
       como_conheceu = "Indicação";
     } else if (
-      [
-        "Google",
-        "Instagram",
-        "Facebook",
-        "Tik Tok",
-        "Indicação",
-        "Outro:",
-      ]
+      ["Google", "Instagram", "Facebook", "Tik Tok", "Indicação", "Outro:"]
         .map((v) => v.toLowerCase())
         .includes(normalized.toLowerCase())
     ) {
@@ -771,7 +774,9 @@ app.put("/interessados/:id", authenticateToken, async (req, res) => {
         "Indicação",
         "Outro:",
       ];
-      const idx = allowed.map((v) => v.toLowerCase()).indexOf(normalized.toLowerCase());
+      const idx = allowed
+        .map((v) => v.toLowerCase())
+        .indexOf(normalized.toLowerCase());
       como_conheceu = allowed[idx];
     } else {
       como_conheceu = "Outro:";
@@ -3302,7 +3307,7 @@ app.post("/webhook", async (req, res) => {
     });
     console.log("📝 Valores brutos do Google Forms:", {
       "Nome Completo": formData["Nome Completo"],
-      "Telefone": formData["Telefone"],
+      Telefone: formData["Telefone"],
       "Como Conheceu": formData["Como Conheceu"],
     });
 
@@ -3353,7 +3358,11 @@ app.post("/webhook", async (req, res) => {
 
     // Aceita qualquer valor não-nulo para nome (incluindo strings vazias do Google Forms)
     // Mas ainda exige que tenha pelo menos algum conteúdo para salvar
-    if (nomeCompleto !== null && nomeCompleto !== undefined && nomeCompleto.trim() !== "") {
+    if (
+      nomeCompleto !== null &&
+      nomeCompleto !== undefined &&
+      nomeCompleto.trim() !== ""
+    ) {
       try {
         // Converter carimbo de data/hora do Google Forms para timestamp PostgreSQL
         let dataContato = new Date().toISOString(); // Default para agora
