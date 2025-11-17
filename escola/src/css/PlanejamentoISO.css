@@ -1,0 +1,558 @@
+/* ========================================
+   PLANEJAMENTO ISO - Sistema de Semanas ISO 8601
+   ======================================== */
+
+.planejamento-iso {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header de Navegação */
+.header-navegacao {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 20px 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  color: white;
+}
+
+.header-navegacao .titulo-mes {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  text-transform: capitalize;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.btn-navegacao {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.btn-navegacao:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-navegacao:active {
+  transform: translateY(0);
+}
+
+/* Grid de Semanas */
+.semanas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 24px;
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card de Semana */
+.semana-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border-left: 5px solid #667eea;
+  position: relative;
+  overflow: hidden;
+}
+
+.semana-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.semana-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.semana-card:hover::before {
+  opacity: 1;
+}
+
+/* Semana Compartilhada */
+.semana-card.compartilhada {
+  border-left-color: #e74c3c;
+  background: linear-gradient(135deg, #ffffff 0%, #fff8f8 100%);
+}
+
+.semana-card.compartilhada::before {
+  background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+}
+
+/* Header do Card */
+.semana-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.semana-numero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.semana-numero strong {
+  font-size: 20px;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.ano-iso {
+  font-size: 13px;
+  color: #95a5a6;
+  font-weight: 500;
+}
+
+.semana-periodo {
+  font-size: 15px;
+  color: #7f8c8d;
+  font-weight: 600;
+  background: #ecf0f1;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* Badge de Compartilhamento */
+.badge-compartilhada {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #ffe5e5 0%, #ffd0d0 100%);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #c0392b;
+  border: 1px solid #ffcccc;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(231, 76, 60, 0);
+  }
+}
+
+.badge-compartilhada .icon {
+  font-size: 18px;
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.badge-compartilhada .texto {
+  font-weight: 600;
+}
+
+/* Body do Planejamento */
+.planejamento-body {
+  margin: 16px 0;
+}
+
+.planejamento-existente {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-badge {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-pendente {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-aprovado {
+  background: linear-gradient(135deg, #d4edda 0%, #b7e4c7 100%);
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-reprovado {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+  border: 1px solid #f1b0b7;
+}
+
+.status-em-revisão {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  color: #0c5460;
+  border: 1px solid #b8daff;
+}
+
+/* Ações */
+.acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-criar,
+.btn-editar,
+.btn-visualizar {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Botão único para abrir o modal */
+.btn-abrir {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-abrir:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
+}
+
+.btn-abrir:active {
+  transform: translateY(0);
+}
+
+.btn-criar {
+  width: 100%;
+  background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.btn-criar:hover {
+  background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+}
+
+.btn-visualizar {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.btn-visualizar:hover {
+  background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.btn-editar {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+}
+
+.btn-editar:hover {
+  background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+}
+
+.btn-criar:active,
+.btn-editar:active,
+.btn-visualizar:active {
+  transform: translateY(0);
+}
+
+/* Mini Calendário */
+.mini-calendario {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.dias-semana-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.dia-header {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #95a5a6;
+  text-transform: uppercase;
+}
+
+.dias-semana-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.mini-calendario .dia {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ecf0f1 0%, #d5dbdb 100%);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.mini-calendario .dia:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.mini-calendario .dia.outro-mes {
+  background: #f8f9fa;
+  color: #bdc3c7;
+  opacity: 0.5;
+}
+
+.mini-calendario .dia.outro-mes:hover {
+  opacity: 0.7;
+}
+
+/* Estados de Loading e Erro */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #95a5a6;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #ecf0f1;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading p {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.error-message {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  border: 2px solid #f1b0b7;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #721c24;
+  font-weight: 600;
+}
+
+.error-message button {
+  padding: 8px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.error-message button:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+}
+
+.empty-state,
+.planejamento-iso-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: #95a5a6;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.planejamento-iso-empty {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border: 2px dashed #dee2e6;
+}
+
+/* Responsivo */
+@media (max-width: 1200px) {
+  .semanas-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .planejamento-iso {
+    padding: 12px;
+  }
+
+  .semanas-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .header-navegacao {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .header-navegacao .titulo-mes {
+    font-size: 22px;
+  }
+
+  .btn-navegacao {
+    width: 100%;
+  }
+
+  .semana-card {
+    padding: 16px;
+  }
+
+  .acoes {
+    flex-direction: column;
+  }
+
+  .btn-visualizar,
+  .btn-editar {
+    width: 100%;
+  }
+}
+
+/* Animações adicionais */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.semana-card {
+  animation: slideIn 0.3s ease-out;
+}
+
+.semana-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.semana-card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.semana-card:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.semana-card:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.semana-card:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.semana-card:nth-child(6) {
+  animation-delay: 0.3s;
+}

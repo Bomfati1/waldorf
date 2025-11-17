@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import jsPDF from "jspdf";
+import SelectWithHint from "../components/SelectWithHint";
+import { drawHeader, drawFooter, formatBRDate } from "../utils/pdfUtils";
 
 const statusMap = {
   P: { text: "Presente", color: "#28a745" },
@@ -22,6 +24,8 @@ const HistoricoAlunoPresencaPage = () => {
   const [error, setError] = useState("");
   const [alunoInfo, setAlunoInfo] = useState(null);
   const [turmaInfo, setTurmaInfo] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Buscar todas as turmas
   useEffect(() => {
@@ -92,21 +96,9 @@ const HistoricoAlunoPresencaPage = () => {
       return;
     }
 
-    // Se um ano específico foi selecionado, verificar se a turma pertence a esse ano
-    if (selectedYear) {
-      const turmaEscolhida = turmas.find(
-        (t) => t.id.toString() === selectedTurma.toString()
-      );
-      if (
-        !turmaEscolhida ||
-        turmaEscolhida.ano_letivo.toString() !== selectedYear
-      ) {
-        setHistoricoAluno([]);
-        setAlunoInfo(null);
-        setTurmaInfo(null);
-        return;
-      }
-    }
+    // Importante: não bloqueie por ano letivo da turma.
+    // O filtro de ano será aplicado nos registros por data (data_aula),
+    // permitindo visualizar quando o ano selecionado não coincide com o ano da turma.
 
     const fetchHistoricoAluno = async () => {
       setLoading(true);
@@ -202,7 +194,17 @@ const HistoricoAlunoPresencaPage = () => {
                     selectedYear
                   );
 
-                  if (!selectedYear || anoAula.toString() === selectedYear) {
+                  const dentroDoAno =
+                    !selectedYear || anoAula.toString() === selectedYear;
+                  const dentroDoPeriodo = (() => {
+                    if (!startDate && !endDate) return true;
+                    const d = new Date(dia.data_aula);
+                    if (startDate && new Date(startDate) > d) return false;
+                    if (endDate && d > new Date(endDate)) return false;
+                    return true;
+                  })();
+
+                  if (dentroDoAno && dentroDoPeriodo) {
                     console.log("  -> ADICIONANDO REGISTRO!");
                     console.log(
                       "  -> Observação do registro:",
@@ -244,7 +246,7 @@ const HistoricoAlunoPresencaPage = () => {
     };
 
     fetchHistoricoAluno();
-  }, [selectedTurma, selectedAluno, selectedYear, turmas]);
+  }, [selectedTurma, selectedAluno, selectedYear, startDate, endDate, turmas]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -283,7 +285,7 @@ const HistoricoAlunoPresencaPage = () => {
     };
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (!alunoInfo || !turmaInfo || !historicoAluno.length) {
       alert("Não há dados suficientes para gerar o PDF");
       return;
@@ -292,15 +294,19 @@ const HistoricoAlunoPresencaPage = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    let yPosition = 20;
+    const periodoTexto =
+      startDate || endDate
+        ? `Período: ${startDate ? formatBRDate(startDate) : ""}${
+            startDate && endDate ? " a " : ""
+          }${endDate ? formatBRDate(endDate) : ""}`
+        : selectedYear
+        ? `Ano letivo: ${selectedYear}`
+        : "Período: Todos os dias";
 
-    // Cabeçalho do relatório
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("HISTÓRICO INDIVIDUAL DE PRESENÇA", pageWidth / 2, yPosition, {
-      align: "center",
+    let yPosition = await drawHeader(doc, {
+      title: "Histórico Individual de Presença",
+      subtitle: `${alunoInfo.nome_completo} • Turma: ${turmaInfo.nome_turma} • ${periodoTexto}`,
     });
-    yPosition += 15;
 
     // Informações do aluno
     doc.setFontSize(14);
@@ -420,18 +426,7 @@ const HistoricoAlunoPresencaPage = () => {
       });
 
     // Rodapé
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        `Página ${i} de ${totalPages}`,
-        pageWidth - 30,
-        pageHeight - 10,
-        { align: "right" }
-      );
-    }
+    drawFooter(doc);
 
     // Nome do arquivo
     const nomeArquivo = `historico_${alunoInfo.nome_completo.replace(
@@ -498,27 +493,14 @@ const HistoricoAlunoPresencaPage = () => {
         }}
       >
         <div style={{ minWidth: "150px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "5px",
-              fontWeight: "bold",
-            }}
-          >
-            Ano Letivo:
-          </label>
-          <select
+          <SelectWithHint
+            label="Ano Letivo:"
+            hint="Filtre por ano letivo específico ou visualize todos os anos disponíveis"
             value={selectedYear}
             onChange={(e) => {
               setSelectedYear(e.target.value);
               setSelectedTurma("");
               setSelectedAluno("");
-            }}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
             }}
           >
             <option value="">Todos os anos</option>
@@ -527,30 +509,17 @@ const HistoricoAlunoPresencaPage = () => {
                 {year}
               </option>
             ))}
-          </select>
+          </SelectWithHint>
         </div>
 
         <div style={{ minWidth: "200px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "5px",
-              fontWeight: "bold",
-            }}
-          >
-            Selecionar Turma:
-          </label>
-          <select
+          <SelectWithHint
+            label="Selecionar Turma:"
+            hint="Escolha a turma para visualizar os alunos e seus históricos de presença"
             value={selectedTurma}
             onChange={(e) => {
               setSelectedTurma(e.target.value);
               setSelectedAluno("");
-            }}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
             }}
           >
             <option value="">Selecione uma turma</option>
@@ -564,29 +533,16 @@ const HistoricoAlunoPresencaPage = () => {
                   {turma.nome_turma}
                 </option>
               ))}
-          </select>
+          </SelectWithHint>
         </div>
 
         <div style={{ minWidth: "200px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "5px",
-              fontWeight: "bold",
-            }}
-          >
-            Selecionar Aluno:
-          </label>
-          <select
+          <SelectWithHint
+            label="Selecionar Aluno:"
+            hint="Selecione o aluno para ver seu histórico completo de presença, faltas e justificativas"
             value={selectedAluno}
             onChange={(e) => setSelectedAluno(e.target.value)}
             disabled={!selectedTurma}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-            }}
           >
             <option value="">Selecione um aluno</option>
             {alunos.map((aluno) => (
@@ -594,7 +550,30 @@ const HistoricoAlunoPresencaPage = () => {
                 {aluno.nome_completo}
               </option>
             ))}
-          </select>
+          </SelectWithHint>
+        </div>
+
+        <div style={{ minWidth: 180 }}>
+          <label style={{ display: "block", fontSize: 12, color: "#555" }}>
+            De
+          </label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{ padding: "6px 8px", width: "100%" }}
+          />
+        </div>
+        <div style={{ minWidth: 180 }}>
+          <label style={{ display: "block", fontSize: 12, color: "#555" }}>
+            Até
+          </label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={{ padding: "6px 8px", width: "100%" }}
+          />
         </div>
       </div>
 

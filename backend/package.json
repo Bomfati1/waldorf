@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "migrate:cpf": "node migrations/run_cpf_normalizado_migration.js",
+    "migrate:guardians": "node migrations/run_guardians_migration.js"
   },
   "keywords": [],
   "author": "",

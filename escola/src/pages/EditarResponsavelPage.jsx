@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import InputWithHint from "../components/InputWithHint";
 
 const EditarResponsavelCSS = () => (
   <style>{`
@@ -228,10 +229,10 @@ const EditarResponsavelPage = () => {
         <h1>Editar Responsável</h1>
         <div className="form-grid">
           <div className="form-group full-width">
-            <label htmlFor="nome_completo">Nome Completo</label>
-            <input
+            <InputWithHint
+              label="Nome Completo"
+              hint="Nome completo do responsável legal conforme documento de identidade"
               type="text"
-              id="nome_completo"
               name="nome_completo"
               value={responsavelData.nome_completo}
               onChange={handleChange}
@@ -239,10 +240,10 @@ const EditarResponsavelPage = () => {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
+            <InputWithHint
+              label="Email"
+              hint="Endereço de email para comunicações e notificações"
               type="email"
-              id="email"
               name="email"
               value={responsavelData.email}
               onChange={handleChange}
@@ -250,10 +251,10 @@ const EditarResponsavelPage = () => {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="telefone">Telefone</label>
-            <input
+            <InputWithHint
+              label="Telefone"
+              hint="Telefone principal para contato. Formato: (00) 00000-0000"
               type="text"
-              id="telefone"
               name="telefone"
               value={responsavelData.telefone}
               onChange={handleChange}
@@ -261,30 +262,30 @@ const EditarResponsavelPage = () => {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="outro_telefone">Outro Telefone (Opcional)</label>
-            <input
+            <InputWithHint
+              label="Outro Telefone (Opcional)"
+              hint="Telefone secundário ou de contato alternativo"
               type="text"
-              id="outro_telefone"
               name="outro_telefone"
               value={responsavelData.outro_telefone}
               onChange={handleChange}
             />
           </div>
           <div className="form-group">
-            <label htmlFor="cpf">CPF</label>
-            <input
+            <InputWithHint
+              label="CPF"
+              hint="CPF do responsável. Formato: 000.000.000-00"
               type="text"
-              id="cpf"
               name="cpf"
               value={responsavelData.cpf}
               onChange={handleChange}
             />
           </div>
           <div className="form-group">
-            <label htmlFor="rg">RG</label>
-            <input
+            <InputWithHint
+              label="RG"
+              hint="Número do RG do responsável"
               type="text"
-              id="rg"
               name="rg"
               value={responsavelData.rg}
               onChange={handleChange}

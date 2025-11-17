@@ -10,6 +10,7 @@ import PreMatriculaPage from "./pages/PreMatriculaPage";
 import TurmasPage from "./pages/TurmasPage";
 import InteressadosDashboardPage from "./pages/InteressadosDashboardPage";
 import PlanejamentosPage from "./pages/PlanejamentosPage";
+import PlanejamentosISOPage from "./pages/PlanejamentosISOPage";
 import ResponsaveisPage from "./pages/ResponsaveisPage";
 import CadastrarAlunoPage from "./pages/CadastrarAlunoPage";
 import CadastrarTurmaPage from "./pages/CadastrarTurmaPage";
@@ -18,6 +19,11 @@ import PerfilPage from "./pages/PerfilPage";
 import EditarResponsavelPage from "./pages/EditarResponsavelPage";
 
 function App() {
+  console.log(
+    "✅ App carregado - PlanejamentosISOPage importado:",
+    PlanejamentosISOPage
+  );
+
   return (
     <Routes>
       {/* Rota para a página de Login */}
@@ -28,6 +34,7 @@ function App() {
         <Route index element={<DashboardHomePage />} />
         <Route path="alunos" element={<AlunosPage />} />
         <Route path="planejamentos" element={<PlanejamentosPage />} />
+        <Route path="planejamentos-iso" element={<PlanejamentosISOPage />} />
         <Route path="turmas" element={<TurmasPage />} />
         <Route path="responsaveis" element={<ResponsaveisPage />} />
         <Route
@@ -37,7 +44,7 @@ function App() {
         <Route path="pre-matricula" element={<PreMatriculaPage />} />
         <Route path="cadastrar-aluno" element={<CadastrarAlunoPage />} />
         <Route path="cadastrar-turma" element={<CadastrarTurmaPage />} />
-        {/* <Route path="relatorios" element={<RelatoriosPage />} /> */}
+        <Route path="relatorios" element={<RelatoriosPage />} />
         <Route path="perfil" element={<PerfilPage />} />
         <Route path="configuracoes" element={<ConfiguracoesPage />} />
         <Route

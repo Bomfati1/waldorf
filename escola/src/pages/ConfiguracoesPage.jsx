@@ -1,6 +1,9 @@
 // src/pages/ConfiguracoesPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import InputWithHint from "../components/InputWithHint";
+import SelectWithHint from "../components/SelectWithHint";
 import "../css/ConfiguracoesPage.css"; // Importando o novo CSS
 
 // Função para agrupar membros por cargo
@@ -17,6 +20,7 @@ const agruparPorCargo = (membros) => {
 
 function ConfiguracoesPage() {
   const { user, loading: authLoading } = useAuth();
+  
   const [membros, setMembros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,6 +29,9 @@ function ConfiguracoesPage() {
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberPassword, setNewMemberPassword] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("Professor");
+
+  // Bloqueia o scroll do body quando o modal está aberto
+  useBodyScrollLock(showForm);
 
   const membrosAgrupados = agruparPorCargo(membros);
   // Define a ordem de exibição dos cargos
@@ -115,6 +122,7 @@ function ConfiguracoesPage() {
           `http://localhost:3001/usuarios/${memberId}`,
           {
             method: "DELETE",
+            credentials: "include",
           }
         );
         if (!response.ok) {
@@ -169,60 +177,78 @@ function ConfiguracoesPage() {
         </div>
 
         {showForm && (
-          <div className="add-member-form">
-            <h3>Adicionar Novo Membro</h3>
-            <form onSubmit={handleAddMember}>
-              <div className="form-group">
-                <label htmlFor="nome">Nome</label>
-                <input
-                  type="text"
-                  id="nome"
-                  value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
-                  placeholder="Nome completo do membro"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                  placeholder="email@exemplo.com"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="senha">Senha Provisória</label>
-                <input
-                  type="password"
-                  id="senha"
-                  value={newMemberPassword}
-                  onChange={(e) => setNewMemberPassword(e.target.value)}
-                  placeholder="Crie uma senha para o novo membro"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="cargo">Cargo</label>
-                <select
-                  id="cargo"
-                  value={newMemberRole}
-                  onChange={(e) => setNewMemberRole(e.target.value)}
-                >
-                  {cargos.map((cargo) => (
-                    <option key={cargo} value={cargo}>
-                      {cargo}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button type="submit" className="submit-button">
-                Salvar Membro
+          <div
+            className="user-modal-overlay"
+            onClick={() => setShowForm(false)}
+          >
+            <div
+              className="user-modal-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="user-modal-close"
+                type="button"
+                title="Fechar"
+                onClick={() => setShowForm(false)}
+              >
+                ×
               </button>
-            </form>
+              <div className="add-member-form" style={{ margin: 0 }}>
+                <h3>Adicionar Novo Membro</h3>
+                <form onSubmit={handleAddMember}>
+                  <div className="form-group">
+                    <InputWithHint
+                      label="Nome"
+                      hint="Digite o nome completo do novo membro da equipe"
+                      type="text"
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      placeholder="Nome completo do membro"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <InputWithHint
+                      label="Email"
+                      hint="Email institucional que será usado para fazer login no sistema"
+                      type="email"
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                      placeholder="email@exemplo.com"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <InputWithHint
+                      label="Senha Provisória"
+                      hint="Crie uma senha temporária que o membro deverá alterar no primeiro acesso"
+                      type="password"
+                      value={newMemberPassword}
+                      onChange={(e) => setNewMemberPassword(e.target.value)}
+                      placeholder="Crie uma senha para o novo membro"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <SelectWithHint
+                      label="Cargo"
+                      hint="Selecione o nível de acesso: Administrador Geral (acesso total), Administrador Pedagógico (acesso pedagógico) ou Professor (acesso limitado)"
+                      value={newMemberRole}
+                      onChange={(e) => setNewMemberRole(e.target.value)}
+                    >
+                      {cargos.map((cargo) => (
+                        <option key={cargo} value={cargo}>
+                          {cargo}
+                        </option>
+                      ))}
+                    </SelectWithHint>
+                  </div>
+                  <button type="submit" className="submit-button">
+                    Salvar Membro
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         )}
 

@@ -1,0 +1,153 @@
+/* InputWithHint.css - Estilos para componentes com hint/tooltip */
+
+.input-with-hint-container {
+  position: relative;
+  width: 100%;
+}
+
+.input-with-hint-container label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.input-with-hint-container .required {
+  color: #dc3545;
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+.input-with-hint-container .hint-icon {
+  position: relative;
+  cursor: help;
+  font-size: 1rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.input-with-hint-container .hint-icon:hover {
+  transform: scale(1.1);
+}
+
+.input-with-hint-container .hint-tooltip {
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #3b82f6 100%);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+  min-width: 250px;
+  max-width: 350px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  pointer-events: none;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Seta do tooltip */
+.input-with-hint-container .hint-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-top-color: #3b82f6;
+}
+
+/* Animação de entrada */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Estilos para inputs, selects e textareas */
+.input-with-hint-container input,
+.input-with-hint-container select,
+.input-with-hint-container textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: #fff;
+  color: #333;
+}
+
+.input-with-hint-container input:focus,
+.input-with-hint-container select:focus,
+.input-with-hint-container textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-with-hint-container input:disabled,
+.input-with-hint-container select:disabled,
+.input-with-hint-container textarea:disabled {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.input-with-hint-container input::placeholder,
+.input-with-hint-container textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Estilos específicos para textarea */
+.input-with-hint-container textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+  .input-with-hint-container .hint-tooltip {
+    min-width: 200px;
+    max-width: 280px;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .input-with-hint-container .hint-tooltip::after {
+    border-width: 6px;
+  }
+}
+
+/* Ajuste para tooltip em telas pequenas (evitar sair da tela) */
+@media (max-width: 480px) {
+  .input-with-hint-container .hint-tooltip {
+    left: 0;
+    transform: translateX(0);
+    right: 0;
+    margin: 0 auto;
+  }
+
+  .input-with-hint-container .hint-tooltip::after {
+    left: 30px;
+  }
+}

@@ -4,7 +4,21 @@
   background-color: #f9fafb;
 }
 
-.relatorios-page-container h1,
+.relatorios-header {
+  background: linear-gradient(180deg, #1e3c72 0%, #2a5298 50%, #3b82f6 100%);
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.relatorios-page-container h1 {
+  color: #ffffff;
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
 .relatorios-page-container h2 {
   color: #333;
 }

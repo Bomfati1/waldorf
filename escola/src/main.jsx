@@ -19,12 +19,14 @@ import FamiliasPage from "./pages/FamiliasPage";
 import CadastrarTurmaPage from "./pages/CadastrarTurmaPage";
 import CadastrarAlunoPage from "./pages/CadastrarAlunoPage";
 import PlanejamentosPage from "./pages/PlanejamentosPage";
+import PlanejamentosISOPage from "./pages/PlanejamentosISOPage";
 import ResponsaveisPage from "./pages/ResponsaveisPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import InteressadosDashboardPage from "./pages/InteressadosDashboardPage"; // Importe o novo componente
 import EditarResponsavelPage from "./pages/EditarResponsavelPage";
 import ResetarSenhaPage from "./pages/ResetarSenhaPage";
 import RecuperarSenhaPage from "./pages/RecuperarSenhaPage";
+import AlunoPerfilPage from "./pages/AlunoPerfilPage";
 
 // Definindo as rotas usando a API moderna do React Router
 const router = createBrowserRouter([
@@ -51,6 +53,10 @@ const router = createBrowserRouter([
       {
         path: "alunos",
         element: <AlunosPage />,
+      },
+      {
+        path: "alunos/perfil/:alunoId",
+        element: <AlunoPerfilPage />,
       },
       {
         path: "pre-matricula",
@@ -95,6 +101,10 @@ const router = createBrowserRouter([
       {
         path: "planejamentos",
         element: <PlanejamentosPage />,
+      },
+      {
+        path: "planejamentos-iso",
+        element: <PlanejamentosISOPage />,
       },
       {
         path: "relatorios",

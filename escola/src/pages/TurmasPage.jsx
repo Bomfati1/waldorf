@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import jsPDF from "jspdf";
+import SelectWithHint from "../components/SelectWithHint";
+import RematriculaModal from "../components/RematriculaModal";
+import logoImage from "../img/bf-fundo-trasnparente-pequeno-YNqrBazK8rUMjRGQ.avif";
+import "../css/TurmasPage.css";
 
 const TurmasPage = () => {
   const { user } = useAuth();
@@ -16,6 +20,8 @@ const TurmasPage = () => {
   const [showAlunosModal, setShowAlunosModal] = useState(false);
   const [alunosDaTurma, setAlunosDaTurma] = useState([]);
   const [loadingAlunos, setLoadingAlunos] = useState(false);
+  const [showRematriculaModal, setShowRematriculaModal] = useState(false);
+  const [turmaParaRematricula, setTurmaParaRematricula] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,6 +79,7 @@ const TurmasPage = () => {
           `http://localhost:3001/turmas/${turmaId}`,
           {
             method: "DELETE",
+            credentials: "include",
           }
         );
 
@@ -138,6 +145,32 @@ const TurmasPage = () => {
     setAlunosDaTurma([]);
   };
 
+  const handleOpenRematricula = (turma) => {
+    setTurmaParaRematricula(turma);
+    setShowRematriculaModal(true);
+  };
+
+  const handleCloseRematricula = () => {
+    setShowRematriculaModal(false);
+    setTurmaParaRematricula(null);
+  };
+
+  const handleRematricula = async (data) => {
+    console.log("Rematrícula realizada:", data);
+    // Recarrega as turmas para atualizar as contagens
+    try {
+      const response = await fetch("http://localhost:3001/turmas", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTurmas(data);
+      }
+    } catch (err) {
+      console.error("Erro ao recarregar turmas:", err);
+    }
+  };
+
   const baseButtonStyle = {
     padding: "10px 20px",
     fontSize: "16px",
@@ -171,34 +204,24 @@ const TurmasPage = () => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: "2rem" }}>Gerenciamento de Turmas</h1>
+      <div className="page-header">
+        <h1>Gerenciamento de Turmas</h1>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <label htmlFor="year-filter">Ano Letivo:</label>
-          <select
-            id="year-filter"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-            }}
-          >
-            <option value="">Todos</option>
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+          <div style={{ minWidth: "150px" }}>
+            <SelectWithHint
+              label="Ano Letivo:"
+              hint="Filtre as turmas por ano letivo ou visualize todas"
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </SelectWithHint>
+          </div>
         </div>
       </div>
 
@@ -287,6 +310,7 @@ const TurmasPage = () => {
           onClose={handleCloseModal}
           onDelete={handleDeleteTurma}
           onViewAlunos={handleViewAlunos}
+          onRematricula={handleOpenRematricula}
           user={user}
         />
       )}
@@ -299,13 +323,29 @@ const TurmasPage = () => {
           loading={loadingAlunos}
         />
       )}
+
+      {showRematriculaModal && turmaParaRematricula && (
+        <RematriculaModal
+          turmaOrigem={turmaParaRematricula}
+          todasTurmas={turmas}
+          onClose={handleCloseRematricula}
+          onRematricular={handleRematricula}
+        />
+      )}
     </div>
   );
 };
 
 // --- Componente do Modal ---
 
-const TurmaModal = ({ turma, onClose, onDelete, onViewAlunos, user }) => {
+const TurmaModal = ({
+  turma,
+  onClose,
+  onDelete,
+  onViewAlunos,
+  onRematricula,
+  user,
+}) => {
   const navigate = useNavigate();
 
   const handleModalContentClick = (e) => {
@@ -446,6 +486,26 @@ const TurmaModal = ({ turma, onClose, onDelete, onViewAlunos, user }) => {
               Ver Alunos ({turma.alunos_count})
             </button>
 
+            {/* Botão Rematrícula - só para administradores */}
+            {user && user.cargo && user.cargo.toLowerCase() !== "professor" && (
+              <button
+                onClick={() => onRematricula(turma)}
+                title="Rematrícula: mova alunos desta turma para outra no próximo ano letivo"
+                style={{
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                  border: "none",
+                  backgroundColor: "#ff9800",
+                  color: "white",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                }}
+              >
+                🔄 Rematrícula
+              </button>
+            )}
+
             {/* Botão Ver Histórico de Presença */}
             <button
               onClick={() =>
@@ -499,17 +559,43 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
     ).toLocaleDateString("pt-BR");
   };
 
-  const generateAlunosPDF = () => {
+  const generateAlunosPDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPosition = 20;
 
+    // Adicionar logo e cabeçalho
+    try {
+      const img = new Image();
+      img.src = logoImage;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      doc.addImage(img, "PNG", 15, 10, 25, 25);
+    } catch (error) {
+      console.error("Erro ao carregar logo:", error);
+    }
+
     // Cabeçalho do relatório
-    doc.setFontSize(20);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("RELATÓRIO DE ALUNOS DA TURMA", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 15;
+    doc.setTextColor(30, 60, 114);
+    doc.text("Portal Primavera Waldorf", 45, 18);
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Relatório de Alunos da Turma", 45, 26);
+
+    // Linha divisória
+    doc.setDrawColor(30, 60, 114);
+    doc.setLineWidth(0.5);
+    doc.line(15, 38, pageWidth - 15, 38);
+
+    yPosition = 45;
 
     // Informações da turma
     doc.setFontSize(14);
@@ -536,14 +622,14 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
     // Professores
     if (turma?.professores && turma.professores.length > 0) {
       doc.setFont("helvetica", "bold");
-      doc.text("PROFESSOR(ES):",20, yPosition);
+      doc.text("PROFESSOR(ES):", 20, yPosition);
       doc.setFont("helvetica", "normal");
-      const professores = turma.professores.map(p => p.nome).join(", ");
-      
+      const professores = turma.professores.map((p) => p.nome).join(", ");
+
       // Verifica se o texto é muito longo e quebra em múltiplas linhas se necessário
       const maxWidth = pageWidth - 70; // Largura máxima disponível
       const lines = doc.splitTextToSize(professores, maxWidth);
-      
+
       if (lines.length === 1) {
         // Se cabe em uma linha, coloca na mesma linha do label
         doc.text(professores, 65, yPosition);
@@ -552,7 +638,7 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
         // Se precisa de múltiplas linhas, coloca na linha seguinte
         yPosition += 6;
         doc.text(lines, 20, yPosition);
-        yPosition += (lines.length * 6) + 6;
+        yPosition += lines.length * 6 + 6;
       }
     }
 
@@ -568,7 +654,7 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
     yPosition += 6;
 
     // Contar alunos ativos e inativos
-    const alunosAtivos = alunos.filter(a => a.status_aluno).length;
+    const alunosAtivos = alunos.filter((a) => a.status_aluno).length;
     const alunosInativos = alunos.length - alunosAtivos;
     doc.text(`• Alunos Ativos: ${alunosAtivos}`, 25, yPosition);
     yPosition += 6;
@@ -576,10 +662,16 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
     yPosition += 6;
 
     // Contar status de pagamento
-    const emDia = alunos.filter(a => a.status_pagamento?.toLowerCase() === 'em_dia').length;
-    const atrasado = alunos.filter(a => a.status_pagamento?.toLowerCase() === 'atrasado').length;
-    const isento = alunos.filter(a => a.status_pagamento?.toLowerCase() === 'isento').length;
-    
+    const emDia = alunos.filter(
+      (a) => a.status_pagamento?.toLowerCase() === "em_dia"
+    ).length;
+    const atrasado = alunos.filter(
+      (a) => a.status_pagamento?.toLowerCase() === "atrasado"
+    ).length;
+    const isento = alunos.filter(
+      (a) => a.status_pagamento?.toLowerCase() === "isento"
+    ).length;
+
     doc.text(`• Pagamentos em Dia: ${emDia}`, 25, yPosition);
     yPosition += 6;
     doc.text(`• Pagamentos Atrasados: ${atrasado}`, 25, yPosition);
@@ -618,31 +710,33 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
       }
 
       doc.text((index + 1).toString(), 20, yPosition);
-      
+
       // Nome (limitado a 25 caracteres)
-      const nome = aluno.nome_completo.length > 25 
-        ? aluno.nome_completo.substring(0, 25) + "..." 
-        : aluno.nome_completo;
+      const nome =
+        aluno.nome_completo.length > 25
+          ? aluno.nome_completo.substring(0, 25) + "..."
+          : aluno.nome_completo;
       doc.text(nome, 30, yPosition);
-      
+
       // Data de nascimento
       doc.text(formatDate(aluno.data_nascimento), 80, yPosition);
-      
+
       // Status
       const status = aluno.status_aluno ? "Ativo" : "Inativo";
       doc.text(status, 110, yPosition);
-      
+
       // Status de pagamento
       const pagamento = getPaymentStatusText(aluno.status_pagamento);
       doc.text(pagamento, 130, yPosition);
-      
+
       // Responsável (limitado a 20 caracteres)
       const responsavel = aluno.responsavel_nome || "N/A";
-      const responsavelLimitado = responsavel.length > 20 
-        ? responsavel.substring(0, 20) + "..." 
-        : responsavel;
+      const responsavelLimitado =
+        responsavel.length > 20
+          ? responsavel.substring(0, 20) + "..."
+          : responsavel;
       doc.text(responsavelLimitado, 160, yPosition);
-      
+
       yPosition += 6;
     });
 
@@ -650,11 +744,25 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
     yPosition = pageHeight - 20;
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
-    doc.text("Relatório gerado automaticamente pelo Sistema Escola", pageWidth / 2, yPosition, { align: "center" });
-    doc.text(`Data de geração: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, pageWidth / 2, yPosition + 5, { align: "center" });
+    doc.text(
+      "Relatório gerado automaticamente pelo Sistema Escola",
+      pageWidth / 2,
+      yPosition,
+      { align: "center" }
+    );
+    doc.text(
+      `Data de geração: ${new Date().toLocaleDateString(
+        "pt-BR"
+      )} às ${new Date().toLocaleTimeString("pt-BR")}`,
+      pageWidth / 2,
+      yPosition + 5,
+      { align: "center" }
+    );
 
     // Salva o PDF
-    const fileName = `relatorio_alunos_${turma?.nome_turma?.replace(/\s+/g, '_') || 'turma'}_${turma?.ano_letivo || 'ano'}.pdf`;
+    const fileName = `relatorio_alunos_${
+      turma?.nome_turma?.replace(/\s+/g, "_") || "turma"
+    }_${turma?.ano_letivo || "ano"}.pdf`;
     doc.save(fileName);
   };
 
@@ -833,7 +941,14 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
         )}
 
         {/* Botões */}
-        <div style={{ marginTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            marginTop: "2rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <button
             onClick={generateAlunosPDF}
             disabled={loading || alunos.length === 0}
@@ -849,12 +964,12 @@ const AlunosModal = ({ turma, alunos, onClose, loading }) => {
               fontWeight: "500",
               display: "flex",
               alignItems: "center",
-              gap: "8px"
+              gap: "8px",
             }}
           >
             📄 Gerar PDF
           </button>
-          
+
           <button
             onClick={onClose}
             style={{

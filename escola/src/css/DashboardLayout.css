@@ -43,6 +43,7 @@
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 999;
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 
@@ -152,7 +153,11 @@
 /* Estilo para o link ativo (página atual) */
 .sidebar-nav a.active,
 .sidebar-footer a.active {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.1)
+  );
   color: white;
   font-weight: 600;
   border-left: 4px solid rgba(255, 255, 255, 0.8);
@@ -161,7 +166,7 @@
 
 .sidebar-nav a.active::before,
 .sidebar-footer a.active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -169,6 +174,33 @@
   width: 4px;
   background: linear-gradient(180deg, #60a5fa, #3b82f6);
   border-radius: 0 2px 2px 0;
+}
+
+/* Badge "Novo" nos itens do menu */
+.badge-novo {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulse-badge 2s ease-in-out infinite;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse-badge {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+  }
 }
 
 /* Rodapé da Sidebar para o botão de Configurações */
@@ -198,40 +230,44 @@
 
 /* Cabeçalho Superior */
 .top-header {
-  padding: 15px 30px;
+  padding: 6px 20px;
   background-color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end; /* Alinha itens à direita */
+  justify-content: flex-end;
   align-items: center;
+  min-height: 50px;
+  height: 50px;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  height: 100%;
 }
 
 .profile-link {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  padding: 5px;
+  padding: 4px;
   border-radius: 8px;
-  transition: background-color 0.2s ease-in-out;
+  transition: all 0.2s ease-in-out;
 }
 
 .profile-link:hover {
-  background-color: #f0f0f0; /* Um cinza bem claro para o hover */
+  background-color: #f0f0f0;
+  transform: scale(1.05);
 }
 
 .profile-pic {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%; /* Deixa a div redonda */
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -240,8 +276,9 @@
   transition: border-color 0.2s ease-in-out;
 }
 
-.profile-pic:hover {
+.profile-link:hover .profile-pic {
   border-color: #14a4f8;
+  box-shadow: 0 2px 8px rgba(20, 164, 248, 0.3);
 }
 
 .profile-image {
@@ -260,7 +297,7 @@
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 15px;
   border-radius: 50%;
 }
 
@@ -268,14 +305,18 @@
   background-color: #e74c3c;
   color: white;
   border: none;
-  padding: 8px 15px;
+  padding: 6px 12px;
   border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .logout-button:hover {
   background-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
 }
 
 /* Conteúdo da Página */
@@ -283,3 +324,42 @@
   padding: 30px;
 }
 
+/* Responsividade para telas menores */
+@media (max-width: 768px) {
+  .top-header {
+    padding: 6px 15px;
+    min-height: 45px;
+  }
+
+  .user-info {
+    gap: 8px;
+  }
+
+  .profile-pic {
+    width: 32px;
+    height: 32px;
+  }
+
+  .profile-placeholder {
+    font-size: 14px;
+  }
+
+  .logout-button {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logout-button {
+    padding: 6px 8px;
+    font-size: 0;
+  }
+
+  .logout-button::before {
+    content: "↗";
+    font-size: 1.2rem;
+    display: inline-block;
+    transform: rotate(45deg);
+  }
+}

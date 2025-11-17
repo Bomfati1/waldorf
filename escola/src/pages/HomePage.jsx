@@ -9,7 +9,14 @@ const HomePage = () => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
-      <h1 style={{ fontSize: "2.2rem", fontWeight: "600", color: "#343a40" }}>
+      <h1
+        style={{
+          fontSize: "2.2rem",
+          fontWeight: "600",
+          color: "#000000",
+          textAlign: "center",
+        }}
+      >
         Painel de Controle
       </h1>
       <InteressadosDashboardPage isEmbedded={true} />

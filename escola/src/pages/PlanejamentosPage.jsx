@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../context/AuthContext"; // Para obter o usuário logado
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import SelectWithHint from "../components/SelectWithHint";
 import ListaComentarios from "../components/ListaComentarios";
+import "../css/PlanejamentosPage.css";
 
 // Nomes dos meses para exibição
 const monthNames = [
@@ -51,8 +54,10 @@ const PlanejamentosPageCSS = () => (
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 1000;
+      z-index: 9999;
       animation: fadeIn 0.3s ease-out;
+      overflow-y: auto;
+      padding: 20px;
     }
 
     .modal-content {
@@ -128,6 +133,16 @@ const PlanejamentosPageCSS = () => (
       border-bottom-color: #17a2b8;
       color: #000;
       font-weight: 600;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
   `}</style>
 );
@@ -425,65 +440,46 @@ const PlanejamentosPage = () => {
       }}
     >
       <PlanejamentosPageCSS />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: "2rem" }}>Planejamentos</h1>
+      <div className="page-header">
+        <h1>Planejamentos</h1>
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          <label htmlFor="year-select" style={{ fontSize: "1rem" }}>
-            Ano:
-          </label>
-          <select
-            id="year-select"
-            value={selectedYear}
-            onChange={handleYearChange}
-            style={{
-              padding: "8px 12px",
-              fontSize: "1rem",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-            }}
-          >
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-          <label htmlFor="turma-select" style={{ fontSize: "1rem" }}>
-            Turma:
-          </label>
-          <select
-            id="turma-select"
-            value={selectedTurma}
-            onChange={(e) => setSelectedTurma(Number(e.target.value))}
-            style={{
-              padding: "8px 12px",
-              fontSize: "1rem",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-              minWidth: "200px",
-            }}
-          >
-            {filteredTurmas.map((turma) => {
-              // Extrai o nome do primeiro professor da turma
-              const professorNome =
-                turma.professores && turma.professores.length > 0
-                  ? turma.professores[0].nome
-                  : "Sem professor";
-
-              return (
-                <option key={turma.id} value={turma.id}>
-                  {turma.nome_turma} - {professorNome}
+          <div style={{ minWidth: "120px" }}>
+            <SelectWithHint
+              label="Ano:"
+              hint="Selecione o ano letivo para visualizar os planejamentos"
+              value={selectedYear}
+              onChange={handleYearChange}
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
                 </option>
-              );
-            })}
-          </select>
+              ))}
+            </SelectWithHint>
+          </div>
+
+          <div style={{ minWidth: "250px" }}>
+            <SelectWithHint
+              label="Turma:"
+              hint="Escolha a turma para gerenciar os planejamentos semanais"
+              value={selectedTurma}
+              onChange={(e) => setSelectedTurma(Number(e.target.value))}
+            >
+              {filteredTurmas.map((turma) => {
+                // Extrai o nome do primeiro professor da turma
+                const professorNome =
+                  turma.professores && turma.professores.length > 0
+                    ? turma.professores[0].nome
+                    : "Sem professor";
+
+                return (
+                  <option key={turma.id} value={turma.id}>
+                    {turma.nome_turma} - {professorNome}
+                  </option>
+                );
+              })}
+            </SelectWithHint>
+          </div>
         </div>
       </div>
 
@@ -633,18 +629,24 @@ const PlanejamentosPage = () => {
 const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
   if (!info) return null;
 
+  // Bloqueia o scroll do body enquanto o modal está aberto
+  useBodyScrollLock(true);
+
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("planejamento");
 
-  // Estado interno para gerenciar os dados do planejamento
+  // Estado interno para gerenciar os dados do planejamento e refresh imediato
+  const [localInfo, setLocalInfo] = useState(info);
   const [anexos, setAnexos] = useState([]);
   const [comentarios, setComentarios] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Atualiza o estado interno quando um novo planejamento é aberto
   useEffect(() => {
+    setLocalInfo(info);
     setAnexos(info.anexos || []);
     setComentarios(info.comentarios || []);
   }, [info]);
@@ -675,7 +677,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     // um sinalizador no formulário. O backend deve ser ajustado para usar este
     // campo e definir a `data_criacao` do planejamento.
     // Esta é a forma mais robusta de garantir a consistência dos dados.
-    const isFirstAttachment = info.anexos.length === 0;
+    const isFirstAttachment = localInfo.anexos.length === 0;
     if (isFirstAttachment) {
       // O backend deve procurar por este campo no corpo da requisição multipart/form-data.
       formData.append("set_creation_date", "true");
@@ -683,7 +685,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}/anexos`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/anexos`,
         {
           method: "POST",
           credentials: "include",
@@ -694,13 +696,19 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
 
       // Recarrega os dados do planejamento para obter a lista de anexos atualizada
       const refetchResponse = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
         {
           credentials: "include",
         }
       );
       const updatedPlanejamento = await refetchResponse.json();
-      onUpdate(updatedPlanejamento); // Atualiza o estado no componente pai
+
+      // Atualiza o estado local IMEDIATAMENTE para feedback visual instantâneo - força nova referência
+      setLocalInfo(updatedPlanejamento);
+      setAnexos([...(updatedPlanejamento.anexos || [])]);
+
+      // Atualiza o estado no componente pai
+      onUpdate(updatedPlanejamento);
 
       setSelectedFile(null);
       document.getElementById("planejamento-upload").value = "";
@@ -723,13 +731,19 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
 
       // Recarrega os dados do planejamento para refletir a exclusão
       const refetchResponse = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
         {
           credentials: "include",
         }
       );
       const updatedPlanejamento = await refetchResponse.json();
-      onUpdate(updatedPlanejamento); // Atualiza o estado no componente pai
+
+      // Atualiza o estado local IMEDIATAMENTE para feedback visual instantâneo - força nova referência
+      setLocalInfo(updatedPlanejamento);
+      setAnexos([...(updatedPlanejamento.anexos || [])]);
+
+      // Atualiza o estado no componente pai
+      onUpdate(updatedPlanejamento);
 
       alert("Anexo excluído com sucesso!");
     } catch (error) {
@@ -740,9 +754,10 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     setIsSubmitting(true);
+    setIsRefreshing(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}/comentarios`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/comentarios`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -757,19 +772,24 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
 
       // Para obter o comentário com o nome do autor, buscamos o planejamento atualizado
       const refetchResponse = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
         {
           credentials: "include",
         }
       );
       const updatedPlanejamento = await refetchResponse.json();
-      setComentarios(updatedPlanejamento.comentarios);
-      onUpdate(updatedPlanejamento); // Atualiza o estado no componente pai
+
+      // Atualiza o estado local IMEDIATAMENTE - força nova referência do array
+      setLocalInfo(updatedPlanejamento);
+      setComentarios([...(updatedPlanejamento.comentarios || [])]);
+      setAnexos([...(updatedPlanejamento.anexos || [])]); // Atualiza o estado no componente pai
+      onUpdate(updatedPlanejamento);
       setNewComment("");
     } catch (error) {
       alert(`Erro: ${error.message}`);
     } finally {
       setIsSubmitting(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -780,9 +800,10 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     // Para garantir que a tela reflita o estado real do banco de dados,
     // vamos buscar novamente os dados completos do planejamento.
     // Essa abordagem é mais robusta do que apenas filtrar o estado local.
+    setIsRefreshing(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
         {
           credentials: "include",
         }
@@ -793,6 +814,11 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
         );
       }
       const updatedPlanejamento = await response.json();
+
+      // Atualiza o estado local IMEDIATAMENTE - força nova referência do array
+      setLocalInfo(updatedPlanejamento);
+      setComentarios([...(updatedPlanejamento.comentarios || [])]);
+
       // Atualiza o estado no componente pai, que por sua vez atualizará o modal.
       onUpdate(updatedPlanejamento);
     } catch (error) {
@@ -800,6 +826,8 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
       alert(
         "O comentário foi excluído, mas houve um erro ao atualizar a tela. Por favor, feche e abra a janela para ver as mudanças."
       );
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -813,7 +841,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${info.id_planejamento}/status`,
+        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/status`,
         {
           method: "PUT", // A rota de status usa PUT
           headers: { "Content-Type": "application/json" },
@@ -826,7 +854,12 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
         throw new Error("Falha ao atualizar o status do planejamento.");
       const updatedData = await response.json();
       alert(`Planejamento ${newStatus.toLowerCase()} com sucesso!`);
-      onUpdate(updatedData); // Atualiza o estado no componente pai
+
+      // Atualiza o estado local IMEDIATAMENTE
+      setLocalInfo(updatedData);
+
+      // Atualiza o estado no componente pai
+      onUpdate(updatedData);
       onClose(); // Fecha o modal
     } catch (error) {
       alert(`Erro: ${error.message}`);
@@ -868,7 +901,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
         onClick={handleModalContentClick}
       >
         <div className="modal-header">
-          <h2>{info.titulo}</h2>
+          <h2>{localInfo.titulo}</h2>
           <button className="modal-close-button" onClick={onClose}>
             &times;
           </button>
@@ -889,18 +922,18 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
             <strong
               style={{
                 color:
-                  info.status === "Aprovado"
+                  localInfo.status === "Aprovado"
                     ? "green"
-                    : info.status === "Reprovado"
+                    : localInfo.status === "Reprovado"
                     ? "red"
                     : "orange",
               }}
             >
-              {info.status || "Pendente"}
+              {localInfo.status || "Pendente"}
             </strong>
           </p>
           <p style={{ margin: "0.25rem 0" }}>
-            Última modificação: {formatDate(info.data_modificacao)}
+            Última modificação: {formatDate(localInfo.data_modificacao)}
           </p>
         </div>
 
@@ -1023,7 +1056,41 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
         )}
 
         {activeTab === "comentarios" && (
-          <div style={{ marginBottom: "1.5rem" }}>
+          <div style={{ marginBottom: "1.5rem", position: "relative" }}>
+            {/* Indicador de refresh */}
+            {isRefreshing && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  padding: "8px 16px",
+                  borderRadius: "20px",
+                  fontSize: "0.85rem",
+                  fontWeight: "600",
+                  zIndex: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 2px 8px rgba(0,123,255,0.3)",
+                  animation: "pulse 1.5s ease-in-out infinite",
+                }}
+              >
+                <span
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    border: "2px solid white",
+                    borderTop: "2px solid transparent",
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                  }}
+                ></span>
+                Atualizando...
+              </div>
+            )}
             {/* Reutiliza o componente ListaComentarios, passando os dados e funções necessários */}
             <ListaComentarios
               comentarios={comentariosParaLista}
@@ -1101,7 +1168,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
                 borderRadius: "6px",
                 fontSize: "1rem",
               }}
-              disabled={isSubmitting || info.status === "Aprovado"}
+              disabled={isSubmitting || localInfo.status === "Aprovado"}
             >
               Aprovar
             </button>
@@ -1116,8 +1183,8 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
             userCargo: user?.cargo,
             userCargoLower: userCargo,
             isAdminGeral,
-            planejamentoId: info.id_planejamento,
-            planejamentoStatus: info.status,
+            planejamentoId: localInfo.id_planejamento,
+            planejamentoStatus: localInfo.status,
           });
 
           return (
@@ -1132,11 +1199,15 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
                 <button
                   onClick={() => {
                     console.log("Botão Excluir clicado!", {
-                      planejamentoId: info.id_planejamento,
-                      mes: info.mes,
-                      semana: info.semana,
+                      planejamentoId: localInfo.id_planejamento,
+                      mes: localInfo.mes,
+                      semana: localInfo.semana,
                     });
-                    onDelete(info.id_planejamento, info.mes, info.semana);
+                    onDelete(
+                      localInfo.id_planejamento,
+                      localInfo.mes,
+                      localInfo.semana
+                    );
                   }}
                   style={{
                     padding: "10px 20px",

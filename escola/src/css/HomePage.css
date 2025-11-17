@@ -1,0 +1,11 @@
+/* HomePage.css */
+.home-page-container h1 {
+  background: linear-gradient(180deg, #1e3c72 0%, #2a5298 50%, #3b82f6 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  margin: -2rem -2rem 1.5rem -2rem;
+  border-radius: 0;
+  font-size: 2rem;
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import Notificacoes from "./Notificacoes";
 import { useAuth } from "../context/AuthContext"; // Importar o hook de autenticação
 import "../css/DashboardLayout.css"; // Importa como módulo
 import { NavLink } from "react-router-dom";
@@ -26,22 +27,27 @@ const DashboardLayout = () => {
 
   return (
     <div className="dashboard-container">
-      <Sidebar 
-        isMenuOpen={isMenuOpen} 
-        onToggleMenu={toggleMenu} 
-        onCloseMenu={closeMenu} 
+      <Sidebar
+        isMenuOpen={isMenuOpen}
+        onToggleMenu={toggleMenu}
+        onCloseMenu={closeMenu}
       />
-      <main className={`main-content ${isMenuOpen ? 'sidebar-open' : ''}`}>
+      <main className={`main-content ${isMenuOpen ? "sidebar-open" : ""}`}>
         <header className="top-header">
           <div className="user-info">
-            <Link to="/home/perfil" className="profile-link">
-              {/* Exibe o nome do usuário logado ou um texto padrão */}
-              <span>Olá, {user?.nome || "Usuário"}</span>
+            {/* Notificações */}
+            <Notificacoes />
+
+            <Link
+              to="/home/perfil"
+              className="profile-link"
+              title={`${user?.nome || "Usuário"} - ${user?.cargo || ""}`}
+            >
               <div className="profile-pic">
                 {user?.foto_perfil ? (
-                  <img 
-                    src={`http://localhost:3001${user.foto_perfil}`} 
-                    alt="Foto de perfil" 
+                  <img
+                    src={`http://localhost:3001${user.foto_perfil}`}
+                    alt="Foto de perfil"
                     className="profile-image"
                   />
                 ) : (
@@ -52,7 +58,11 @@ const DashboardLayout = () => {
               </div>
             </Link>
 
-            <button className="logout-button" onClick={handleLogout}>
+            <button
+              className="logout-button"
+              onClick={handleLogout}
+              title="Sair do sistema"
+            >
               Sair
             </button>
           </div>

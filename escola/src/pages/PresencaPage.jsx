@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import InputWithHint from "../components/InputWithHint";
 
 const statusOptions = [
   { value: "P", label: "Presente" },
@@ -192,19 +193,12 @@ const PresencaPage = () => {
       </div>
 
       <div style={{ marginBottom: "2rem" }}>
-        <label htmlFor="date-picker" style={{ marginRight: "1rem" }}>
-          Data:
-        </label>
-        <input
+        <InputWithHint
+          label="Data:"
+          hint="Selecione a data da aula para registrar ou consultar a presença dos alunos"
           type="date"
-          id="date-picker"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          style={{
-            padding: "8px 12px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
       </div>
 

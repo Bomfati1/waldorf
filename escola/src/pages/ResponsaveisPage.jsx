@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import InputWithHint from "../components/InputWithHint";
 import ImportDropdown from "../components/ImportDropdown";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import "../css/ImportDropdown.css";
+import "../css/ResponsaveisPage.css";
 
 // Componente de estilo para a tabela (pode ser movido para um arquivo CSS)
 const ResponsaveisPageCSS = () => (
@@ -126,6 +129,9 @@ const ResponsaveisPageCSS = () => (
 );
 
 const ResponsavelModal = ({ responsavel, onClose, onEdit }) => {
+  // Bloqueia o scroll do body enquanto o modal está aberto
+  useBodyScrollLock(true);
+
   const [alunos, setAlunos] = useState([]);
   const [loadingAlunos, setLoadingAlunos] = useState(false);
 
@@ -414,9 +420,11 @@ const ResponsaveisPage = () => {
     <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
       <ResponsaveisPageCSS />
       <div className="page-header">
-        <h1 style={{ fontSize: "2rem", margin: 0 }}>Lista de Responsáveis</h1>
+        <h1>Lista de Responsáveis</h1>
         <div className="search-container">
-          <input
+          <InputWithHint
+            id="search-responsavel"
+            hint="Digite o nome do responsável para filtrar a lista"
             type="text"
             placeholder="Buscar por nome..."
             value={searchTerm}

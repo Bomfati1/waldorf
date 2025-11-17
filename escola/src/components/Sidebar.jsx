@@ -23,12 +23,17 @@ import logoImage from "../img/bf-fundo-trasnparente-pequeno-YNqrBazK8rUMjRGQ.avi
 const navItems = [
   { path: "alunos", icon: <FaUserGraduate />, label: "Alunos" },
   { path: "planejamentos", icon: <FaCalendarCheck />, label: "Planejamentos" },
+  {
+    path: "planejamentos-iso",
+    icon: <FaCalendarCheck />,
+    label: "Planejamentos ISO",
+    badge: "Novo",
+  },
   { path: "turmas", icon: <FaChalkboardTeacher />, label: "Turmas" },
   { path: "responsaveis", icon: <FaUsers />, label: "Responsáveis" },
   { path: "pre-matricula", icon: <FaFileSignature />, label: "Pré-Matrícula" },
   { path: "cadastrar-aluno", icon: <FaUserPlus />, label: "Cadastrar Aluno" },
   { path: "cadastrar-turma", icon: <FaPlusCircle />, label: "Cadastrar Turma" },
-  // { path: "relatorios", icon: <FaFileAlt />, label: "Relatórios" },
 ];
 
 const Sidebar = ({ isMenuOpen, onToggleMenu, onCloseMenu }) => {
@@ -65,6 +70,8 @@ const Sidebar = ({ isMenuOpen, onToggleMenu, onCloseMenu }) => {
       <button
         className={`menu-toggle ${isMenuOpen ? "menu-open" : ""}`}
         onClick={onToggleMenu}
+        aria-label="Abrir menu de navegação"
+        title="Abrir menu"
       >
         <FaBars />
       </button>
@@ -86,7 +93,12 @@ const Sidebar = ({ isMenuOpen, onToggleMenu, onCloseMenu }) => {
               className="sidebar-logo"
             />
           </Link>
-          <button className="close-menu" onClick={onCloseMenu}>
+          <button
+            className="close-menu"
+            onClick={onCloseMenu}
+            aria-label="Fechar menu de navegação"
+            title="Fechar menu"
+          >
             <FaTimes />
           </button>
         </div>
@@ -104,6 +116,9 @@ const Sidebar = ({ isMenuOpen, onToggleMenu, onCloseMenu }) => {
                 >
                   {item.icon}
                   <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="badge-novo">{item.badge}</span>
+                  )}
                 </NavLink>
               </li>
             ))}

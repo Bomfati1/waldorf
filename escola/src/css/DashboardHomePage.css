@@ -8,6 +8,29 @@
   align-items: flex-start;
 }
 
+.dashboard-header {
+  background: linear-gradient(180deg, #1e3c72 0%, #2a5298 50%, #3b82f6 100%);
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.welcome-title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 0.5rem 0;
+}
+
+.welcome-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
 /* Grid de funcionalidades */
 .features-grid {
   display: grid;
@@ -37,7 +60,7 @@
 }
 
 .feature-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -102,25 +125,25 @@
     flex-direction: column;
     gap: 1.5rem;
   }
-  
+
   .features-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .feature-card {
     min-height: 140px;
     padding: 1.25rem;
   }
-  
+
   .feature-icon {
     font-size: 2rem;
   }
-  
+
   .feature-title {
     font-size: 1.1rem;
   }
-  
+
   .profile-section {
     max-width: none;
     width: 100%;
@@ -143,20 +166,6 @@
 .features-section {
   flex: 2;
   min-width: 0; /* Permite que o flex item encolha */
-}
-
-.welcome-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #343a40;
-  margin-bottom: 1rem;
-}
-
-.welcome-text {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  color: #495057;
-  margin-bottom: 1rem;
 }
 
 .profile-section {

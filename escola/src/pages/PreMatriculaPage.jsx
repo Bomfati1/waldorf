@@ -2,7 +2,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import InteressadosDashboardPage from "./InteressadosDashboardPage"; // Importa o componente do dashboard
 import ImportDropdown from "../components/ImportDropdown";
+import InputWithHint from "../components/InputWithHint";
+import SelectWithHint from "../components/SelectWithHint";
 import "../css/ImportDropdown.css";
+import "../css/PreMatriculaPage.css";
 
 const statusOptions = [
   "Entrou Em Contato",
@@ -246,7 +249,6 @@ const PreMatriculaPage = () => {
     }));
   };
 
-
   // Aplica os filtros aos dados
   const filteredMatriculas = preMatriculas.filter((matricula) => {
     const matchNome = matricula.nome
@@ -286,7 +288,10 @@ const PreMatriculaPage = () => {
     ...actionButtonStyle,
     backgroundColor: "#6c757d",
   };
-  const deleteButtonStyle = { ...actionButtonStyle, backgroundColor: "#dc3545" };
+  const deleteButtonStyle = {
+    ...actionButtonStyle,
+    backgroundColor: "#dc3545",
+  };
   const inputStyle = {
     width: "100%",
     padding: "8px 12px",
@@ -330,9 +335,9 @@ const PreMatriculaPage = () => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
-      <h1 style={{ marginBottom: "1.5rem", fontSize: "2rem" }}>
-        Pré-matrículas
-      </h1>
+      <div className="pre-matricula-header">
+        <h1>Pré-matrículas</h1>
+      </div>
 
       <div
         style={{
@@ -366,15 +371,45 @@ const PreMatriculaPage = () => {
                 title: "Importar Interessados",
                 endpoint: "/interessados/upload-excel",
                 acceptedColumns: [
-                  { name: "Nome", description: "Nome completo do interessado", required: true },
-                  { name: "Email", description: "Endereço de email do interessado", required: true },
-                  { name: "Telefone", description: "Número de telefone do interessado", required: true },
-                  { name: "Data", description: "Data de interesse (formato: YYYY-MM-DD)", required: false },
-                  { name: "Status", description: "Status do interessado (Entrou Em Contato, Conversando, Negociando, Visita Agendada, Ganho, Perdido)", required: false },
-                  { name: "Intenção", description: "Intenção de matrícula (sim/nao)", required: false },
-                  { name: "Observações", description: "Observações adicionais (opcional)", required: false }
+                  {
+                    name: "Nome",
+                    description: "Nome completo do interessado",
+                    required: true,
+                  },
+                  {
+                    name: "Email",
+                    description: "Endereço de email do interessado",
+                    required: true,
+                  },
+                  {
+                    name: "Telefone",
+                    description: "Número de telefone do interessado",
+                    required: true,
+                  },
+                  {
+                    name: "Data",
+                    description: "Data de interesse (formato: YYYY-MM-DD)",
+                    required: false,
+                  },
+                  {
+                    name: "Status",
+                    description:
+                      "Status do interessado (Entrou Em Contato, Conversando, Negociando, Visita Agendada, Ganho, Perdido)",
+                    required: false,
+                  },
+                  {
+                    name: "Intenção",
+                    description: "Intenção de matrícula (sim/nao)",
+                    required: false,
+                  },
+                  {
+                    name: "Observações",
+                    description: "Observações adicionais (opcional)",
+                    required: false,
+                  },
                 ],
-                description: "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos interessados de uma vez. O sistema criará automaticamente novos registros na base de dados.",
+                description:
+                  "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos interessados de uma vez. O sistema criará automaticamente novos registros na base de dados.",
                 buttonText: "Importar Interessados",
                 onSuccess: (data) => {
                   // Recarregar a lista de interessados após importação bem-sucedida
@@ -382,65 +417,75 @@ const PreMatriculaPage = () => {
                 },
                 onError: (data) => {
                   console.error("Erro na importação:", data);
-                }
-              }
+                },
+              },
             ]}
           />
 
           {/* Seção de Filtros */}
           <div
             style={{
-              display: "flex",
-              gap: "1rem",
+              backgroundColor: "#f8f9fa",
+              padding: "1.5rem",
+              borderRadius: "8px",
               marginBottom: "1.5rem",
-              flexWrap: "wrap",
             }}
           >
-            <input
-              type="text"
-              name="nome"
-              placeholder="Buscar por nome..."
-              value={filters.nome}
-              onChange={handleFilterChange}
+            <h3
               style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-              }}
-            />
-            <input
-              type="date"
-              name="data"
-              value={filters.data}
-              onChange={handleFilterChange}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-              }}
-            />
-            <select
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
+                marginTop: 0,
+                marginBottom: "1rem",
+                fontSize: "1rem",
+                color: "#495057",
               }}
             >
-              <option value="todos">Todos os Status</option>
-              {statusOptions.map((option) => (
-                <option
-                  key={option}
-                  value={option}
-                  style={{ textTransform: "capitalize" }}
-                >
-                  {/* Capitaliza a primeira letra para melhor leitura */}
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </option>
-              ))}
-            </select>
+              Filtros de Busca
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "1rem",
+              }}
+            >
+              <InputWithHint
+                id="filter-nome-interessado"
+                type="text"
+                name="nome"
+                placeholder="Buscar por nome..."
+                value={filters.nome}
+                onChange={handleFilterChange}
+                hint="Digite o nome completo ou parcial do interessado para filtrar a lista"
+                label="Nome do Interessado"
+              />
+              <InputWithHint
+                type="date"
+                name="data"
+                value={filters.data}
+                onChange={handleFilterChange}
+                hint="Filtre os interessados por data de contato inicial"
+                label="Data de Contato"
+              />
+              <SelectWithHint
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                hint="Filtre pelo estágio no funil de vendas"
+                label="Status"
+              >
+                <option value="todos">Todos os Status</option>
+                {statusOptions.map((option) => (
+                  <option
+                    key={option}
+                    value={option}
+                    style={{ textTransform: "capitalize" }}
+                  >
+                    {/* Capitaliza a primeira letra para melhor leitura */}
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </option>
+                ))}
+              </SelectWithHint>
+            </div>
           </div>
 
           {loading && <p>Carregando interessados...</p>}
@@ -564,7 +609,9 @@ const PreMatriculaPage = () => {
                           >
                             {/* Se o valor atual não estiver nas opções, preserva-o como primeira opção */}
                             {editedData.como_conheceu &&
-                              !comoConheceuOptions.includes(editedData.como_conheceu) && (
+                              !comoConheceuOptions.includes(
+                                editedData.como_conheceu
+                              ) && (
                                 <option value={editedData.como_conheceu}>
                                   {editedData.como_conheceu}
                                 </option>

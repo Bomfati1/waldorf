@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
+import { drawHeader, drawFooter, formatBRDate } from "../utils/pdfUtils";
 
 const statusMap = {
   P: { text: "Presente", color: "#28a745" },
@@ -16,6 +17,8 @@ const HistoricoPresencaPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openDate, setOpenDate] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,19 +62,17 @@ const HistoricoPresencaPage = () => {
     setOpenDate(openDate === date ? null : date);
   };
 
-  const generatePDF = (dia) => {
+  const generatePDF = async (dia) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    let yPosition = 20;
-
-    // Cabeçalho do relatório
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("RELATÓRIO DE PRESENÇA", pageWidth / 2, yPosition, {
-      align: "center",
+    let yPosition = await drawHeader(doc, {
+      title: "Relatório de Presença",
+      subtitle: turmaInfo?.nome_turma
+        ? `Turma: ${turmaInfo?.nome_turma}`
+        : undefined,
+      rightText: formatBRDate(dia.data_aula),
     });
-    yPosition += 15;
 
     // Informações da turma
     doc.setFontSize(14);
@@ -182,28 +183,139 @@ const HistoricoPresencaPage = () => {
     });
 
     // Rodapé
-    yPosition = pageHeight - 20;
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "italic");
-    doc.text(
-      "Relatório gerado automaticamente pelo Sistema Escola",
-      pageWidth / 2,
-      yPosition,
-      { align: "center" }
-    );
-    doc.text(
-      `Data de geração: ${new Date().toLocaleDateString(
-        "pt-BR"
-      )} às ${new Date().toLocaleTimeString("pt-BR")}`,
-      pageWidth / 2,
-      yPosition + 5,
-      { align: "center" }
-    );
+    drawFooter(doc);
 
     // Salva o PDF
     const fileName = `relatorio_presenca_${
       turmaInfo?.nome_turma?.replace(/\s+/g, "_") || "turma"
     }_${formatDate(dia.data_aula).replace(/\//g, "-")}.pdf`;
+    doc.save(fileName);
+  };
+
+  const isWithinRange = (dateStr) => {
+    if (!startDate && !endDate) return true;
+    const d = new Date(dateStr);
+    if (startDate && new Date(startDate) > d) return false;
+    if (endDate && d > new Date(endDate)) return false;
+    return true;
+  };
+
+  const historicoFiltrado = Array.isArray(historico)
+    ? historico.filter((d) => isWithinRange(d.data_aula))
+    : [];
+
+  const computeConsolidado = () => {
+    const map = new Map();
+    historicoFiltrado.forEach((dia) => {
+      if (!Array.isArray(dia.registros)) return;
+      dia.registros.forEach((reg) => {
+        const key = reg.aluno_id;
+        if (!map.has(key)) {
+          map.set(key, {
+            aluno_id: key,
+            nome: reg.nome_completo,
+            P: 0,
+            F: 0,
+            FJ: 0,
+          });
+        }
+        const entry = map.get(key);
+        if (reg.status === "P") entry.P += 1;
+        else if (reg.status === "F") entry.F += 1;
+        else if (reg.status === "FJ") entry.FJ += 1;
+      });
+    });
+    const arr = Array.from(map.values()).map((e) => ({
+      ...e,
+      total: e.P + e.F + e.FJ,
+      perc:
+        e.P + e.F + e.FJ > 0
+          ? ((e.P / (e.P + e.F + e.FJ)) * 100).toFixed(1)
+          : "0.0",
+    }));
+    arr.sort((a, b) => a.nome.localeCompare(b.nome));
+    return arr;
+  };
+
+  const generateConsolidatedPDF = async () => {
+    if (!historicoFiltrado.length) return;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const periodSubtitle =
+      startDate || endDate
+        ? `Período: ${startDate ? formatBRDate(startDate) : ""}${
+            startDate && endDate ? " a " : ""
+          }${endDate ? formatBRDate(endDate) : ""}`
+        : "Período: Todos os dias";
+    let y = await drawHeader(doc, {
+      title: "Consolidado de Presenças",
+      subtitle: turmaInfo?.nome_turma
+        ? `Turma: ${turmaInfo.nome_turma} • ${periodSubtitle}`
+        : periodSubtitle,
+    });
+
+    // Table header
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Nº", 20, y);
+    doc.text("ALUNO", 30, y);
+    doc.text("P", 120, y);
+    doc.text("F", 130, y);
+    doc.text("FJ", 140, y);
+    doc.text("TOTAL", 155, y);
+    doc.text("% PRES.", 175, y);
+    y += 4;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    const rows = computeConsolidado();
+    for (let idx = 0; idx < rows.length; idx++) {
+      const r = rows[idx];
+      if (y > pageHeight - 20) {
+        doc.addPage();
+        y = await drawHeader(doc, {
+          title: "Consolidado de Presenças",
+          subtitle: turmaInfo?.nome_turma
+            ? `Turma: ${turmaInfo.nome_turma} • ${periodSubtitle}`
+            : periodSubtitle,
+        });
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("Nº", 20, y);
+        doc.text("ALUNO", 30, y);
+        doc.text("P", 120, y);
+        doc.text("F", 130, y);
+        doc.text("FJ", 140, y);
+        doc.text("TOTAL", 155, y);
+        doc.text("% PRES.", 175, y);
+        y += 4;
+        doc.line(20, y, pageWidth - 20, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+      }
+      doc.text(String(idx + 1), 20, y);
+      doc.text(r.nome, 30, y);
+      doc.text(String(r.P), 120, y);
+      doc.text(String(r.F), 130, y);
+      doc.text(String(r.FJ), 140, y);
+      doc.text(String(r.total), 155, y);
+      doc.text(`${r.perc}%`, 175, y, { align: "right" });
+      y += 7;
+    }
+
+    drawFooter(doc);
+    const suffix =
+      startDate || endDate
+        ? `${startDate ? startDate : ""}_${endDate ? endDate : ""}`.replace(
+            /\//g,
+            "-"
+          )
+        : "todos";
+    const fileName = `consolidado_presencas_${
+      turmaInfo?.nome_turma?.replace(/\s+/g, "_") || "turma"
+    }_${suffix}.pdf`;
     doc.save(fileName);
   };
 
@@ -223,6 +335,55 @@ const HistoricoPresencaPage = () => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
+      {/* Filtros de período */}
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          alignItems: "end",
+          marginBottom: "1rem",
+        }}
+      >
+        <div>
+          <label style={{ display: "block", fontSize: 12, color: "#555" }}>
+            De
+          </label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{ padding: "6px 8px" }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: 12, color: "#555" }}>
+            Até
+          </label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={{ padding: "6px 8px" }}
+          />
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <button
+            onClick={generateConsolidatedPDF}
+            disabled={!historicoFiltrado.length}
+            style={{
+              padding: "8px 16px",
+              cursor: historicoFiltrado.length ? "pointer" : "not-allowed",
+              backgroundColor: historicoFiltrado.length ? "#28a745" : "#ccc",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            📄 Gerar PDF Consolidado
+          </button>
+        </div>
+      </div>
       <div
         style={{
           display: "flex",
@@ -259,11 +420,68 @@ const HistoricoPresencaPage = () => {
         </div>
       </div>
 
-      {historico.length === 0 ? (
+      {historicoFiltrado.length === 0 ? (
         <p>Nenhum registro de presença encontrado para esta turma.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {historico.map((dia) => (
+          {/* Consolidado em tela */}
+          <div
+            style={{
+              border: "1px solid #dee2e6",
+              borderRadius: 8,
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <strong>Consolidado de Presenças no Período</strong>
+              <span style={{ color: "#555", fontSize: 12 }}>
+                {startDate || endDate
+                  ? `${startDate ? formatDate(startDate) : ""}${
+                      startDate && endDate ? " a " : ""
+                    }${endDate ? formatDate(endDate) : ""}`
+                  : "Todos os dias"}
+              </span>
+            </div>
+            <div style={{ overflowX: "auto", marginTop: 10 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #dee2e6" }}>
+                    <th style={{ padding: 8, textAlign: "left" }}>#</th>
+                    <th style={{ padding: 8, textAlign: "left" }}>Aluno</th>
+                    <th style={{ padding: 8, textAlign: "left" }}>P</th>
+                    <th style={{ padding: 8, textAlign: "left" }}>F</th>
+                    <th style={{ padding: 8, textAlign: "left" }}>FJ</th>
+                    <th style={{ padding: 8, textAlign: "left" }}>Total</th>
+                    <th style={{ padding: 8, textAlign: "left" }}>% Pres.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {computeConsolidado().map((r, idx) => (
+                    <tr
+                      key={r.aluno_id}
+                      style={{ borderBottom: "1px solid #f0f0f0" }}
+                    >
+                      <td style={{ padding: 8 }}>{idx + 1}</td>
+                      <td style={{ padding: 8 }}>{r.nome}</td>
+                      <td style={{ padding: 8 }}>{r.P}</td>
+                      <td style={{ padding: 8 }}>{r.F}</td>
+                      <td style={{ padding: 8 }}>{r.FJ}</td>
+                      <td style={{ padding: 8 }}>{r.total}</td>
+                      <td style={{ padding: 8 }}>{r.perc}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {historicoFiltrado.map((dia) => (
             <div
               key={dia.data_aula}
               style={{
