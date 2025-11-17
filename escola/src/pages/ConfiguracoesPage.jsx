@@ -20,7 +20,7 @@ const agruparPorCargo = (membros) => {
 
 function ConfiguracoesPage() {
   const { user, loading: authLoading } = useAuth();
-  
+
   const [membros, setMembros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
