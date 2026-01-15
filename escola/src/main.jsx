@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; // 1. Importar o AuthProvider
+import { ModalProvider } from "./context/ModalContext"; // Importar o ModalProvider
 
 // Importando os componentes de página e layout
 import Login from "./components/Login";
@@ -18,7 +19,7 @@ import PerfilPage from "./pages/PerfilPage";
 import FamiliasPage from "./pages/FamiliasPage";
 import CadastrarTurmaPage from "./pages/CadastrarTurmaPage";
 import CadastrarAlunoPage from "./pages/CadastrarAlunoPage";
-import PlanejamentosPage from "./pages/PlanejamentosPage";
+import CadastrarResponsavelPage from "./pages/CadastrarResponsavelPage";
 import PlanejamentosISOPage from "./pages/PlanejamentosISOPage";
 import ResponsaveisPage from "./pages/ResponsaveisPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
@@ -100,10 +101,6 @@ const router = createBrowserRouter([
       },
       {
         path: "planejamentos",
-        element: <PlanejamentosPage />,
-      },
-      {
-        path: "planejamentos-iso",
         element: <PlanejamentosISOPage />,
       },
       {
@@ -123,6 +120,10 @@ const router = createBrowserRouter([
         element: <CadastrarAlunoPage />,
       },
       {
+        path: "cadastrar-responsavel",
+        element: <CadastrarResponsavelPage />,
+      },
+      {
         path: "alunos/:alunoId/editar",
         element: <CadastrarAlunoPage />,
       },
@@ -134,7 +135,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     {/* 2. Envolver a aplicação com o AuthProvider */}
     <AuthProvider>
-      <RouterProvider router={router} />
+      <ModalProvider>
+        <RouterProvider router={router} />
+      </ModalProvider>
     </AuthProvider>
   </React.StrictMode>
 );

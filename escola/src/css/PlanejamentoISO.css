@@ -346,21 +346,6 @@
   border-top: 2px solid #f0f0f0;
 }
 
-.dias-semana-header {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
-}
-
-.dia-header {
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #95a5a6;
-  text-transform: uppercase;
-}
-
 .dias-semana-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

@@ -1,13 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import ImportDropdown from "../components/ImportDropdown";
-import ResponsavelCPF from "../components/ResponsavelCPF";
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
 import TextareaWithHint from "../components/TextareaWithHint";
 import "../css/FormLayout.css";
 import "../css/CadastrarAlunoPage.css";
-import "../css/ImportDropdown.css";
 
 const CadastrarAlunoPage = () => {
   // Estado único para todos os campos do formulário
@@ -24,48 +21,85 @@ const CadastrarAlunoPage = () => {
   });
 
   const [responsavelExistente, setResponsavelExistente] = useState(null);
+  const [responsaveis, setResponsaveis] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loadingResponsaveis, setLoadingResponsaveis] = useState(false);
   // Estados para controle da UI
-  // O estado 'turmas' e o useEffect foram removidos
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+
+  // Buscar todos os responsáveis ao carregar
+  useEffect(() => {
+    const fetchResponsaveis = async () => {
+      setLoadingResponsaveis(true);
+      try {
+        const response = await fetch("http://localhost:3001/responsaveis", {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setResponsaveis(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar responsáveis:", err);
+      } finally {
+        setLoadingResponsaveis(false);
+      }
+    };
+    fetchResponsaveis();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Callback quando responsável é encontrado
-  const handleResponsavelFound = (responsavel) => {
+  // Filtrar responsáveis com base no termo de busca
+  const responsaveisFiltrados = responsaveis.filter((resp) =>
+    resp.nome_completo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Selecionar responsável
+  const handleSelectResponsavel = (responsavel) => {
     setResponsavelExistente(responsavel);
     setFormData((prev) => ({
       ...prev,
-      cpf_responsavel: responsavel.cpf_responsavel,
-      nome_completo_responsavel: responsavel.nome_responsavel,
-      telefone: responsavel.telefone,
+      cpf_responsavel: responsavel.cpf || "",
+      nome_completo_responsavel: responsavel.nome_completo || "",
+      telefone: responsavel.telefone || "",
       email: responsavel.email || "",
       outro_telefone: responsavel.outro_telefone || "",
     }));
+    setSearchTerm(""); // Limpa a busca após selecionar
+    setError(""); // Limpa qualquer erro anterior
   };
 
-  // Callback quando responsável não é encontrado (novo)
-  const handleResponsavelNotFound = (data) => {
+  // Limpar seleção de responsável
+  const handleClearResponsavel = () => {
     setResponsavelExistente(null);
-    // Limpa apenas os campos do responsável, mantém os dados do aluno intactos
     setFormData((prev) => ({
-      ...prev, // Mantém TODOS os dados existentes (incluindo dados do aluno)
-      cpf_responsavel: data.cpf_responsavel || "", // Atualiza apenas o CPF
-      nome_completo_responsavel: "", // Limpa para novo cadastro
-      telefone: "", // Limpa para novo cadastro
-      email: "", // Limpa para novo cadastro
-      outro_telefone: "", // Limpa para novo cadastro
+      ...prev,
+      cpf_responsavel: "",
+      nome_completo_responsavel: "",
+      telefone: "",
+      email: "",
+      outro_telefone: "",
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // A validação de turma_id foi removida
+
+    // Valida se um responsável foi vinculado
+    if (!responsavelExistente) {
+      setError(
+        "Por favor, vincule um responsável existente antes de cadastrar o aluno."
+      );
+      return;
+    }
+
     setLoading(true);
     setError("");
     setSuccess("");
@@ -120,83 +154,6 @@ const CadastrarAlunoPage = () => {
         <h1>📝 Cadastrar Novo Aluno</h1>
       </div>
 
-      {/* Botão de Importação */}
-      <div style={{ marginBottom: "2rem" }}>
-        <ImportDropdown
-          buttonText="Importar via Excel"
-          buttonIcon="📊"
-          options={[
-            {
-              icon: "🎓",
-              title: "Importar Alunos",
-              endpoint: "/alunos/upload-excel",
-              acceptedColumns: [
-                {
-                  name: "Nome Completo Aluno",
-                  description: "Nome completo do aluno",
-                  required: true,
-                },
-                {
-                  name: "Data Nascimento",
-                  description:
-                    "Data de nascimento do aluno (formato: YYYY-MM-DD)",
-                  required: true,
-                },
-                {
-                  name: "Informações Saúde",
-                  description: "Informações de saúde do aluno (opcional)",
-                  required: false,
-                },
-                {
-                  name: "Situação Financeira",
-                  description: "Situação financeira (Integral ou Bolsista)",
-                  required: false,
-                },
-                {
-                  name: "Nome Responsável",
-                  description: "Nome completo do responsável",
-                  required: true,
-                },
-                {
-                  name: "Telefone",
-                  description: "Número de telefone do responsável",
-                  required: true,
-                },
-                {
-                  name: "Email",
-                  description: "Endereço de email do responsável",
-                  required: true,
-                },
-                {
-                  name: "Outro Telefone",
-                  description: "Número de telefone secundário (opcional)",
-                  required: false,
-                },
-                {
-                  name: "RG",
-                  description: "Número do RG do responsável (opcional)",
-                  required: false,
-                },
-                {
-                  name: "CPF",
-                  description: "Número do CPF do responsável (opcional)",
-                  required: false,
-                },
-              ],
-              description:
-                "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos alunos de uma vez. O sistema criará automaticamente novos registros de alunos e responsáveis na base de dados.",
-              buttonText: "Importar Alunos",
-              onSuccess: (data) => {
-                setTimeout(() => navigate("/home/alunos"), 2000);
-              },
-              onError: (data) => {
-                console.error("Erro na importação:", data);
-              },
-            },
-          ]}
-        />
-      </div>
-
       {/* Formulário */}
       <form onSubmit={handleSubmit}>
         {/* Mensagens de Feedback */}
@@ -235,7 +192,7 @@ const CadastrarAlunoPage = () => {
 
             <div className="form-group">
               <SelectWithHint
-                label="Situação Financeira"
+                label="Status Financeiro"
                 hint="Indique se o aluno paga o valor integral ou possui algum tipo de bolsa/desconto"
                 name="status_pagamento"
                 value={formData.status_pagamento}
@@ -260,89 +217,155 @@ const CadastrarAlunoPage = () => {
           </div>
         </div>
 
-        {/* Seção: Dados do Responsável */}
+        {/* Seção: Vincular Responsável */}
         <div className="form-section mt-3">
-          <h3 className="form-section-title">👨‍👩‍👧 Dados do Responsável</h3>
+          <h3 className="form-section-title">👨‍👩‍👧 Vincular Responsável</h3>
 
-          {/* Componente de busca por CPF */}
-          <div className="mb-2">
-            <ResponsavelCPF
-              onResponsavelFound={handleResponsavelFound}
-              onResponsavelNotFound={handleResponsavelNotFound}
-            />
-          </div>
+          <p style={{ marginBottom: "1rem", color: "#666" }}>
+            Para cadastrar um aluno, é necessário vincular um responsável já
+            cadastrado no sistema. Se o responsável ainda não está cadastrado,
+            acesse{" "}
+            <a
+              href="/home/cadastrar-responsavel"
+              style={{ color: "#007bff", textDecoration: "underline" }}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Cadastrar Responsável
+            </a>{" "}
+            primeiro.
+          </p>
 
-          <div className="form-grid grid-2-cols">
-            <div className="form-group full-width">
+          {/* Campo de busca por nome */}
+          {!responsavelExistente && (
+            <div style={{ marginBottom: "1rem" }}>
               <InputWithHint
-                label="Nome do Responsável"
-                hint="Nome completo do responsável legal pelo aluno. Este campo é preenchido automaticamente se o CPF for encontrado"
-                name="nome_completo_responsavel"
+                label="Buscar Responsável por Nome"
+                hint="Digite o nome do responsável para encontrá-lo na lista"
                 type="text"
-                value={formData.nome_completo_responsavel}
-                onChange={handleChange}
-                disabled={responsavelExistente !== null}
-                required
-                placeholder={
-                  responsavelExistente
-                    ? "✓ Preenchido automaticamente via CPF"
-                    : "Digite o nome completo do responsável"
-                }
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Digite o nome do responsável..."
               />
-            </div>
 
-            <div className="form-group">
-              <InputWithHint
-                label="Telefone Principal"
-                hint="Telefone principal para contato. Formato: (00) 00000-0000"
-                name="telefone"
-                type="tel"
-                value={formData.telefone}
-                onChange={handleChange}
-                disabled={responsavelExistente !== null}
-                required
-                placeholder={
-                  responsavelExistente
-                    ? "✓ Preenchido automaticamente"
-                    : "(00) 00000-0000"
-                }
-              />
-            </div>
+              {/* Lista de responsáveis filtrados */}
+              {searchTerm && responsaveisFiltrados.length > 0 && (
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    maxHeight: "200px",
+                    overflowY: "auto",
+                    border: "1px solid #dee2e6",
+                    borderRadius: "6px",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {responsaveisFiltrados.map((resp) => (
+                    <div
+                      key={resp.id}
+                      onClick={() => handleSelectResponsavel(resp)}
+                      style={{
+                        padding: "0.75rem",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #f0f0f0",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.target.style.backgroundColor = "#f8f9fa")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.target.style.backgroundColor = "#fff")
+                      }
+                    >
+                      <div style={{ fontWeight: "600", color: "#333" }}>
+                        {resp.nome_completo}
+                      </div>
+                      <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                        {resp.cpf && `CPF: ${resp.cpf}`}
+                        {resp.telefone && ` • Tel: ${resp.telefone}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            <div className="form-group">
-              <InputWithHint
-                label="Telefone Adicional"
-                hint="Telefone secundário ou de contato alternativo (opcional)"
-                name="outro_telefone"
-                type="tel"
-                value={formData.outro_telefone}
-                onChange={handleChange}
-                disabled={responsavelExistente !== null}
-                placeholder={
-                  responsavelExistente
-                    ? "✓ Preenchido automaticamente"
-                    : "(00) 00000-0000 (opcional)"
-                }
-              />
+              {searchTerm && responsaveisFiltrados.length === 0 && (
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    padding: "0.75rem",
+                    backgroundColor: "#fff3cd",
+                    border: "1px solid #ffc107",
+                    borderRadius: "6px",
+                    color: "#856404",
+                  }}
+                >
+                  Nenhum responsável encontrado com este nome.
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="form-group">
-              <InputWithHint
-                label="Email"
-                hint="Endereço de email do responsável para comunicações e notificações"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={responsavelExistente !== null}
-                placeholder={
-                  responsavelExistente
-                    ? "✓ Preenchido automaticamente"
-                    : "email@exemplo.com"
-                }
-              />
+          {/* Informações do responsável vinculado */}
+          {responsavelExistente && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#f8f9fa",
+                borderRadius: "8px",
+                border: "1px solid #dee2e6",
+                marginTop: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                <h4 style={{ margin: 0, color: "#28a745" }}>
+                  ✓ Responsável Vinculado
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleClearResponsavel}
+                  style={{
+                    padding: "6px 12px",
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  Alterar
+                </button>
+              </div>
+              <div style={{ display: "grid", gap: "0.5rem" }}>
+                <p style={{ margin: 0 }}>
+                  <strong>Nome:</strong> {responsavelExistente.nome_completo}
+                </p>
+                {responsavelExistente.cpf && (
+                  <p style={{ margin: 0 }}>
+                    <strong>CPF:</strong> {responsavelExistente.cpf}
+                  </p>
+                )}
+                {responsavelExistente.telefone && (
+                  <p style={{ margin: 0 }}>
+                    <strong>Telefone:</strong> {responsavelExistente.telefone}
+                  </p>
+                )}
+                {responsavelExistente.email && (
+                  <p style={{ margin: 0 }}>
+                    <strong>Email:</strong> {responsavelExistente.email}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer com Botão de Submit */}

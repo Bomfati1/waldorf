@@ -45,7 +45,7 @@ const RelatoriosPage = () => {
     const fetchAlunos = async () => {
       try {
         console.log("Buscando alunos ativos...");
-        const res = await fetch("http://localhost:3001/alunos/ativos", {
+        const res = await fetch("http://localhost:3001/alunos/ativos-simples", {
           credentials: "include"
         });
         console.log("Resposta da busca de alunos:", res.status, res.statusText);

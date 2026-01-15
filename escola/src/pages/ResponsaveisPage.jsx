@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import InputWithHint from "../components/InputWithHint";
-import ImportDropdown from "../components/ImportDropdown";
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
-import "../css/ImportDropdown.css";
+import ModalBase from "../components/ModalBase";
+import EditAlunoModal from "../components/EditAlunoModal";
+import { useModal } from "../context/ModalContext";
 import "../css/ResponsaveisPage.css";
 
 // Componente de estilo para a tabela (pode ser movido para um arquivo CSS)
@@ -70,49 +70,7 @@ const ResponsaveisPageCSS = () => (
       min-width: 300px;
     }
 
-    /* Estilos para o Modal de Detalhes */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0, 0, 0, 0.6);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .modal-content {
-      background-color: white;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      width: 90%;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      position: relative;
-    }
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #e0e0e0;
-      padding-bottom: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .modal-header h2 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-    .modal-close-button {
-      background: transparent;
-      border: none;
-      font-size: 2rem;
-      cursor: pointer;
-      line-height: 1;
-    }
+    /* Estilos customizados para detalhes do responsável */
     .detail-item {
       margin-bottom: 1rem;
     }
@@ -128,12 +86,55 @@ const ResponsaveisPageCSS = () => (
   `}</style>
 );
 
-const ResponsavelModal = ({ responsavel, onClose, onEdit }) => {
-  // Bloqueia o scroll do body enquanto o modal está aberto
-  useBodyScrollLock(true);
+const ResponsavelModal = ({ responsavel, onClose, onEdit, onAlunoClick }) => {
+  const { openModal, closeModal, getZIndex } = useModal();
+  const modalId = `responsavel-modal-${responsavel?.id || "new"}`;
 
   const [alunos, setAlunos] = useState([]);
   const [loadingAlunos, setLoadingAlunos] = useState(false);
+  const [responsavelCompleto, setResponsavelCompleto] = useState(null);
+  const [loadingResponsavel, setLoadingResponsavel] = useState(false);
+
+  useEffect(() => {
+    if (responsavel) {
+      openModal(modalId);
+    }
+    return () => closeModal(modalId);
+  }, [responsavel]);
+
+  // Busca os dados completos do responsável incluindo endereço
+  useEffect(() => {
+    const fetchResponsavelCompleto = async () => {
+      if (!responsavel?.id) return;
+
+      setLoadingResponsavel(true);
+      try {
+        const response = await fetch(
+          `http://localhost:3001/responsaveis/${responsavel.id}`,
+          {
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setResponsavelCompleto(data);
+        } else {
+          console.error("Erro ao buscar responsável:", response.statusText);
+          setResponsavelCompleto(responsavel); // Fallback para os dados básicos
+        }
+      } catch (err) {
+        console.error("Erro ao buscar responsável:", err);
+        setResponsavelCompleto(responsavel); // Fallback para os dados básicos
+      } finally {
+        setLoadingResponsavel(false);
+      }
+    };
+
+    if (responsavel) {
+      fetchResponsavelCompleto();
+    }
+  }, [responsavel]);
 
   useEffect(() => {
     const fetchAlunos = async () => {
@@ -170,6 +171,9 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit }) => {
 
   if (!responsavel) return null;
 
+  // Usa os dados completos se disponíveis, senão usa os dados básicos
+  const dadosResponsavel = responsavelCompleto || responsavel;
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -179,161 +183,231 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Detalhes do Responsável</h2>
-          <button className="modal-close-button" onClick={onClose}>
-            &times;
-          </button>
+    <ModalBase
+      isOpen={true}
+      onClose={onClose}
+      title="👤 Detalhes do Responsável"
+      size="medium"
+      zIndex={getZIndex(modalId)}
+    >
+      {loadingResponsavel ? (
+        <div style={{ padding: "2rem", textAlign: "center", color: "#666" }}>
+          Carregando detalhes...
         </div>
-        <div className="detail-item">
-          <strong>Nome Completo:</strong>{" "}
-          <span>{responsavel.nome_completo}</span>
-        </div>
-        <div className="detail-item">
-          <strong>Email:</strong> <span>{responsavel.email}</span>
-        </div>
-        <div className="detail-item">
-          <strong>Telefone:</strong> <span>{responsavel.telefone}</span>
-        </div>
-        <div className="detail-item">
-          <strong>Outro Telefone:</strong>{" "}
-          <span>{responsavel.outro_telefone || "N/A"}</span>
-        </div>
-        <div className="detail-item">
-          <strong>CPF:</strong>{" "}
-          <span>{responsavel.cpf || "Não informado"}</span>
-        </div>
-        <div className="detail-item">
-          <strong>RG:</strong> <span>{responsavel.rg || "Não informado"}</span>
-        </div>
+      ) : (
+        <div>
+          <div className="detail-item">
+            <strong>Nome Completo:</strong>{" "}
+            <span>{dadosResponsavel.nome_completo}</span>
+          </div>
+          <div className="detail-item">
+            <strong>Email:</strong> <span>{dadosResponsavel.email}</span>
+          </div>
+          <div className="detail-item">
+            <strong>Telefone:</strong> <span>{dadosResponsavel.telefone}</span>
+          </div>
+          <div className="detail-item">
+            <strong>Outro Telefone:</strong>{" "}
+            <span>{dadosResponsavel.outro_telefone || "N/A"}</span>
+          </div>
+          <div className="detail-item">
+            <strong>CPF:</strong>{" "}
+            <span>{dadosResponsavel.cpf || "Não informado"}</span>
+          </div>
+          <div className="detail-item">
+            <strong>RG:</strong>{" "}
+            <span>{dadosResponsavel.rg || "Não informado"}</span>
+          </div>
 
-        {/* Seção de Alunos Vinculados */}
-        <div
-          className="detail-item"
-          style={{
-            marginTop: "1.5rem",
-            borderTop: "1px solid #e0e0e0",
-            paddingTop: "1rem",
-          }}
-        >
-          <strong>
-            Alunos Vinculados
-            {!loadingAlunos && alunos.length > 0 && (
-              <span
-                style={{
-                  fontSize: "0.8em",
-                  color: "#666",
-                  fontWeight: "normal",
-                  marginLeft: "8px",
-                }}
-              >
-                ({alunos.length} {alunos.length === 1 ? "aluno" : "alunos"})
-              </span>
-            )}
-            :
-          </strong>
-          {loadingAlunos ? (
+          {/* Seção de Endereço */}
+          {(dadosResponsavel.cidade ||
+            dadosResponsavel.bairro ||
+            dadosResponsavel.logradouro) && (
             <div
-              style={{ padding: "10px 0", color: "#666", fontStyle: "italic" }}
-            >
-              Carregando alunos...
-            </div>
-          ) : alunos.length > 0 ? (
-            <div
+              className="detail-item"
               style={{
-                marginTop: "10px",
-                maxHeight: "200px",
-                overflowY: alunos.length > 3 ? "auto" : "visible",
-                paddingRight: alunos.length > 3 ? "5px" : "0",
+                marginTop: "1.5rem",
+                borderTop: "1px solid #e0e0e0",
+                paddingTop: "1rem",
               }}
             >
-              {alunos.map((aluno) => (
-                <div
-                  key={aluno.id}
-                  style={{
-                    padding: "8px 12px",
-                    margin: "5px 0",
-                    backgroundColor: "#f8f9fa",
-                    borderRadius: "6px",
-                    border: "1px solid #e9ecef",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = "#e9ecef";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = "#f8f9fa";
-                  }}
-                  title="Clique para ver mais detalhes do aluno"
-                >
-                  <div style={{ fontWeight: "600", color: "#333" }}>
-                    {aluno.nome_completo}
+              <strong>📍 Endereço:</strong>
+              <div style={{ marginTop: "8px" }}>
+                {dadosResponsavel.cidade && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <strong style={{ fontSize: "0.9rem" }}>Cidade:</strong>{" "}
+                    <span>{dadosResponsavel.cidade}</span>
                   </div>
-                  <div
-                    style={{
-                      fontSize: "0.85em",
-                      color: "#666",
-                      marginTop: "2px",
-                    }}
-                  >
-                    Nascimento: {formatDate(aluno.data_nascimento)} • Status:{" "}
-                    <span
-                      style={{
-                        color: aluno.status_aluno === 1 ? "#28a745" : "#dc3545",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {aluno.status_aluno === 1 ? "Ativo" : "Inativo"}
+                )}
+                {dadosResponsavel.bairro && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <strong style={{ fontSize: "0.9rem" }}>Bairro:</strong>{" "}
+                    <span>{dadosResponsavel.bairro}</span>
+                  </div>
+                )}
+                {(dadosResponsavel.tipo_logradouro ||
+                  dadosResponsavel.logradouro) && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <strong style={{ fontSize: "0.9rem" }}>Logradouro:</strong>{" "}
+                    <span>
+                      {dadosResponsavel.tipo_logradouro &&
+                        `${dadosResponsavel.tipo_logradouro} `}
+                      {dadosResponsavel.logradouro}
                     </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              style={{
-                padding: "10px 0",
-                color: "#666",
-                fontStyle: "italic",
-                textAlign: "center",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "6px",
-                margin: "10px 0",
-              }}
-            >
-              Nenhum aluno vinculado a este responsável
+                )}
+                {dadosResponsavel.numero && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <strong style={{ fontSize: "0.9rem" }}>Número:</strong>{" "}
+                    <span>{dadosResponsavel.numero}</span>
+                  </div>
+                )}
+                {dadosResponsavel.complemento && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <strong style={{ fontSize: "0.9rem" }}>Complemento:</strong>{" "}
+                    <span>{dadosResponsavel.complemento}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1.5rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <button
-            onClick={() => onEdit(responsavel.id)}
+
+          {/* Seção de Alunos Vinculados */}
+          <div
+            className="detail-item"
             style={{
-              backgroundColor: "#17a2b8",
-              color: "white",
-              padding: "10px 15px",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
+              marginTop: "1.5rem",
+              borderTop: "1px solid #e0e0e0",
+              paddingTop: "1rem",
             }}
           >
-            Editar
-          </button>
+            <strong>
+              Alunos Vinculados
+              {!loadingAlunos && alunos.length > 0 && (
+                <span
+                  style={{
+                    fontSize: "0.8em",
+                    color: "#666",
+                    fontWeight: "normal",
+                    marginLeft: "8px",
+                  }}
+                >
+                  ({alunos.length} {alunos.length === 1 ? "aluno" : "alunos"})
+                </span>
+              )}
+              :
+            </strong>
+            {loadingAlunos ? (
+              <div
+                style={{
+                  padding: "10px 0",
+                  color: "#666",
+                  fontStyle: "italic",
+                }}
+              >
+                Carregando alunos...
+              </div>
+            ) : alunos.length > 0 ? (
+              <div
+                style={{
+                  marginTop: "10px",
+                  maxHeight: "200px",
+                  overflowY: alunos.length > 3 ? "auto" : "visible",
+                  paddingRight: alunos.length > 3 ? "5px" : "0",
+                }}
+              >
+                {alunos.map((aluno) => (
+                  <div
+                    key={aluno.id}
+                    onClick={() => onAlunoClick && onAlunoClick(aluno.id)}
+                    style={{
+                      padding: "8px 12px",
+                      margin: "5px 0",
+                      backgroundColor: "#f8f9fa",
+                      borderRadius: "6px",
+                      border: "1px solid #e9ecef",
+                      cursor: "pointer",
+                      transition: "background-color 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = "#e9ecef";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = "#f8f9fa";
+                    }}
+                    title="Clique para editar este aluno"
+                  >
+                    <div style={{ fontWeight: "600", color: "#333" }}>
+                      {aluno.nome_completo}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.85em",
+                        color: "#666",
+                        marginTop: "2px",
+                      }}
+                    >
+                      Nascimento: {formatDate(aluno.data_nascimento)} • Status:{" "}
+                      <span
+                        style={{
+                          color: aluno.status_aluno ? "#28a745" : "#dc3545",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {aluno.status_aluno ? "Ativo" : "Inativo"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "10px 0",
+                  color: "#666",
+                  fontStyle: "italic",
+                  textAlign: "center",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "6px",
+                  margin: "10px 0",
+                }}
+              >
+                Nenhum aluno vinculado a este responsável
+              </div>
+            )}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "1rem",
+              marginTop: "1.5rem",
+              paddingTop: "1rem",
+              borderTop: "1px solid #e0e0e0",
+            }}
+          >
+            <button
+              onClick={() => onEdit(responsavel.id)}
+              style={{
+                backgroundColor: "#17a2b8",
+                color: "white",
+                padding: "10px 15px",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "1rem",
+                fontWeight: "500",
+                transition: "background-color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = "#138496")}
+              onMouseLeave={(e) => (e.target.style.backgroundColor = "#17a2b8")}
+            >
+              Editar
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </ModalBase>
   );
 };
 
@@ -343,6 +417,8 @@ const ResponsaveisPage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedResponsavel, setSelectedResponsavel] = useState(null);
+  const [selectedAluno, setSelectedAluno] = useState(null);
+  const [turmas, setTurmas] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -364,7 +440,22 @@ const ResponsaveisPage = () => {
       }
     };
 
+    const fetchTurmas = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/turmas", {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setTurmas(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar turmas:", err);
+      }
+    };
+
     fetchResponsaveis();
+    fetchTurmas();
   }, []);
 
   const handleDelete = async (id) => {
@@ -401,6 +492,45 @@ const ResponsaveisPage = () => {
     navigate(`/home/responsaveis/${id}/editar`);
   };
 
+  const handleAlunoClick = async (alunoId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/alunos/${alunoId}/detalhes`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedAluno(data);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar detalhes do aluno:", err);
+    }
+  };
+
+  const handleSaveAluno = async (updatedData) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/alunos/${updatedData.aluno_id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(updatedData),
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      setSelectedAluno(null);
+      // Recarrega o responsável selecionado para atualizar a lista de alunos
+      if (selectedResponsavel) {
+        setSelectedResponsavel({ ...selectedResponsavel });
+      }
+    } catch (err) {
+      alert(`Erro ao atualizar aluno: ${err.message}`);
+    }
+  };
+
   // Filtra os responsáveis com base no termo de busca
   const filteredResponsaveis = useMemo(() => {
     return responsaveis.filter((responsavel) =>
@@ -421,7 +551,7 @@ const ResponsaveisPage = () => {
       <ResponsaveisPageCSS />
       <div className="page-header">
         <h1>Lista de Responsáveis</h1>
-        <div className="search-container">
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <InputWithHint
             id="search-responsavel"
             hint="Digite o nome do responsável para filtrar a lista"
@@ -431,62 +561,25 @@ const ResponsaveisPage = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
+          <button
+            onClick={() => navigate("/home/cadastrar-responsavel")}
+            style={{
+              padding: "10px 16px",
+              cursor: "pointer",
+              border: "none",
+              backgroundColor: "#28a745",
+              color: "white",
+              borderRadius: "6px",
+              fontSize: "14px",
+              fontWeight: "500",
+              whiteSpace: "nowrap",
+            }}
+            title="Cadastrar um novo responsável"
+          >
+            ➕ Cadastrar Responsável
+          </button>
         </div>
       </div>
-
-      <ImportDropdown
-        buttonText="Importar via Excel"
-        buttonIcon="📊"
-        options={[
-          {
-            icon: "👥",
-            title: "Importar Responsáveis",
-            endpoint: "/responsaveis/upload-excel",
-            acceptedColumns: [
-              {
-                name: "Nome Completo",
-                description: "Nome completo do responsável",
-                required: true,
-              },
-              {
-                name: "Email",
-                description: "Endereço de email do responsável",
-                required: true,
-              },
-              {
-                name: "Telefone",
-                description: "Número de telefone principal",
-                required: true,
-              },
-              {
-                name: "Outro Telefone",
-                description: "Número de telefone secundário (opcional)",
-                required: false,
-              },
-              {
-                name: "RG",
-                description: "Número do RG (opcional)",
-                required: false,
-              },
-              {
-                name: "CPF",
-                description: "Número do CPF (opcional)",
-                required: false,
-              },
-            ],
-            description:
-              "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos responsáveis de uma vez. O sistema criará automaticamente novos registros na base de dados.",
-            buttonText: "Importar Responsáveis",
-            onSuccess: (data) => {
-              // Recarregar a lista de responsáveis após importação bem-sucedida
-              fetchResponsaveis();
-            },
-            onError: (data) => {
-              console.error("Erro na importação:", data);
-            },
-          },
-        ]}
-      />
 
       <table className="responsaveis-table">
         <thead>
@@ -535,7 +628,17 @@ const ResponsaveisPage = () => {
         responsavel={selectedResponsavel}
         onClose={() => setSelectedResponsavel(null)}
         onEdit={handleEdit}
+        onAlunoClick={handleAlunoClick}
       />
+
+      {selectedAluno && (
+        <EditAlunoModal
+          alunoData={selectedAluno}
+          turmas={turmas}
+          onClose={() => setSelectedAluno(null)}
+          onSave={handleSaveAluno}
+        />
+      )}
     </div>
   );
 };

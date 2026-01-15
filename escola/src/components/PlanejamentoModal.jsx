@@ -1,19 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useAuth } from "../context/AuthContext";
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import ModalBase from "./ModalBase";
 import ListaComentarios from "./ListaComentarios";
 
 const PlanejamentoModalStyles = () => (
   <style>{`
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:9999; animation: fadeIn .3s ease-out; overflow-y: auto; }
-    .modal-content { background: #fff; padding: 2rem; border-radius: 8px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative; animation: slideIn .3s ease-out; margin: 20px; }
-    .modal-header { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #e0e0e0; padding-bottom:1rem; margin-bottom:1.5rem; }
-    .modal-close-button { background:transparent; border:none; font-size:2rem; line-height:1; cursor:pointer; color:#555 }
     .tabs-container { display:flex; border-bottom:1px solid #ccc; margin-bottom:1.5rem; }
     .tab-button { padding:10px 20px; cursor:pointer; border:none; background:transparent; border-bottom:3px solid transparent; margin-bottom:-1px; font-size:1rem; color:#555 }
     .tab-button.active { border-bottom-color:#17a2b8; color:#000; font-weight:600 }
-    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-    @keyframes slideIn { from{ transform: translateY(-30px); opacity:0 } to{ transform: translateY(0); opacity:1 } }
     @keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
     .delete-button{ background:transparent; border:none; color:#dc3545; font-size:20px; cursor:pointer }
@@ -23,9 +19,6 @@ const PlanejamentoModalStyles = () => (
 
 const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
   if (!info) return null;
-
-  // Bloqueia o scroll do body enquanto o modal está aberto
-  useBodyScrollLock(true);
 
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("planejamento");
@@ -235,6 +228,17 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     }
   };
 
+  // Gera o título com o nome do mês
+  const getTituloMes = () => {
+    if (!localInfo.mes || !localInfo.ano) return "Planejamento";
+    const nomeMes = format(new Date(localInfo.ano, localInfo.mes - 1), "MMMM", {
+      locale: ptBR,
+    });
+    return `${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)} ${
+      localInfo.ano
+    }`;
+  };
+
   // Permissões
   const userCargo = String(user?.cargo || "").toLowerCase();
   const isAdminGeral = userCargo === "administrador geral";
@@ -243,423 +247,408 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     userCargo === "administrador geral";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalBase
+      isOpen={true}
+      onClose={onClose}
+      title={getTituloMes()}
+      size="medium"
+      closeOnOverlayClick={false}
+    >
       <PlanejamentoModalStyles />
-      <div
-        className="modal-content"
-        style={{ maxWidth: "600px" }}
-        onClick={handleModalContentClick}
-      >
-        <div className="modal-header">
-          <h2>
-            {localInfo.titulo ||
-              `Semana ${localInfo.semana_iso || localInfo.semana} - ${
-                localInfo.ano_iso || localInfo.ano
-              }`}
-          </h2>
-          <button className="modal-close-button" onClick={onClose}>
-            &times;
-          </button>
-        </div>
 
-        {/* Bloco de informações de semana ISO com mini calendário, igual à ideia do PlanejamentosISO */}
-        {isoInfo && (
-          <div
-            style={{
-              border: "1px solid #eee",
-              borderRadius: 8,
-              padding: "12px 14px",
-              marginBottom: "16px",
-              background: "#fafafa",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ fontWeight: 700, color: "#2c3e50" }}>
-                Semana {localInfo.semana_iso} · {localInfo.ano_iso}
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "#7f8c8d",
-                  background: "#ecf0f1",
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                }}
-              >
-                {new Date(isoInfo.inicioSemana).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                })}{" "}
-                -
-                {new Date(isoInfo.fimSemana).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                })}
-              </div>
-            </div>
-
-            {isoInfo?.compartilhamento &&
-              Array.isArray(isoInfo.compartilhamento.nomesMeses) &&
-              isoInfo.compartilhamento.nomesMeses.length > 1 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 10px",
-                    background: "#ffe5e5",
-                    color: "#c0392b",
-                    border: "1px solid #ffcccc",
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <span>🔗</span>
-                  <span>
-                    Também em: {isoInfo.compartilhamento.nomesMeses.join(", ")}
-                  </span>
-                </div>
-              )}
-
-            {Array.isArray(isoInfo.diasSemana) && (
-              <div style={{ marginTop: 8 }}>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(7, 1fr)",
-                    gap: 4,
-                    marginBottom: 6,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "#95a5a6",
-                    textTransform: "uppercase",
-                    textAlign: "center",
-                  }}
-                >
-                  {["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => (
-                    <div key={i}>{d}</div>
-                  ))}
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(7, 1fr)",
-                    gap: 4,
-                  }}
-                >
-                  {isoInfo.diasSemana.map((dia) => (
-                    <div
-                      key={dia}
-                      title={new Date(dia).toLocaleDateString("pt-BR")}
-                      style={{
-                        aspectRatio: "1 / 1",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background:
-                          "linear-gradient(135deg,#ecf0f1 0%,#d5dbdb 100%)",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#2c3e50",
-                      }}
-                    >
-                      {new Date(dia).getDate()}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
+      {/* Bloco de informações de semana ISO com mini calendário, igual à ideia do PlanejamentosISO */}
+      {isoInfo && (
         <div
           style={{
-            fontSize: ".9rem",
-            color: "#555",
-            marginBottom: "1rem",
-            padding: ".5rem 1rem",
-            background: "#f8f9fa",
-            borderRadius: 4,
+            border: "1px solid #eee",
+            borderRadius: 8,
+            padding: "12px 14px",
+            marginBottom: "16px",
+            background: "#fafafa",
           }}
         >
-          <p style={{ margin: ".25rem 0" }}>
-            Status:{" "}
-            <strong
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 8,
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#2c3e50" }}>
+              Semana {localInfo.semana_iso} · {localInfo.ano_iso}
+            </div>
+            <div
               style={{
-                color:
-                  localInfo.status === "Aprovado"
-                    ? "green"
-                    : localInfo.status === "Reprovado"
-                    ? "red"
-                    : "orange",
+                fontSize: 13,
+                color: "#7f8c8d",
+                background: "#ecf0f1",
+                padding: "4px 10px",
+                borderRadius: 8,
               }}
             >
-              {localInfo.status || "Pendente"}
-            </strong>
-          </p>
-          <p style={{ margin: ".25rem 0" }}>
-            Última modificação: {formatDate(localInfo.data_modificacao)}
-          </p>
-        </div>
-
-        <div className="tabs-container" style={{ marginBottom: "1.5rem" }}>
-          <button
-            className={`tab-button ${
-              activeTab === "planejamento" ? "active" : ""
-            }`}
-            onClick={() => setActiveTab("planejamento")}
-          >
-            Planejamento
-          </button>
-          <button
-            className={`tab-button ${
-              activeTab === "comentarios" ? "active" : ""
-            }`}
-            onClick={() => setActiveTab("comentarios")}
-          >
-            Comentários ({comentarios.length})
-          </button>
-        </div>
-
-        {activeTab === "planejamento" && (
-          <div>
-            <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-              <label>Anexos</label>
-              {anexos && anexos.length > 0 ? (
-                <ul
-                  style={{ listStyle: "none", padding: 0, marginTop: ".5rem" }}
-                >
-                  {anexos.map((anexo) => {
-                    const caminhoDoArquivo =
-                      anexo.path_arquivo ||
-                      anexo.caminho_arquivo ||
-                      anexo.caminho;
-                    const nomeDoArquivo =
-                      anexo.nome_original ||
-                      anexo.nome_arquivo ||
-                      (caminhoDoArquivo
-                        ? caminhoDoArquivo.split("/").pop()
-                        : "Anexo");
-                    return (
-                      <li
-                        key={anexo.id_anexo}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: 8,
-                          border: "1px solid #eee",
-                          borderRadius: 4,
-                          marginBottom: ".5rem",
-                        }}
-                      >
-                        {caminhoDoArquivo ? (
-                          <a
-                            href={`http://localhost:3001/${caminhoDoArquivo}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {nomeDoArquivo}
-                          </a>
-                        ) : (
-                          <span
-                            style={{ color: "#dc3545", fontStyle: "italic" }}
-                          >
-                            {nomeDoArquivo} (caminho inválido)
-                          </span>
-                        )}
-                        <button
-                          onClick={() => handleDeleteAttachment(anexo.id_anexo)}
-                          className="delete-button"
-                          title="Excluir anexo"
-                        >
-                          &times;
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p>Nenhum anexo encontrado.</p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="planejamento-upload">Adicionar novo anexo</label>
-              <input
-                type="file"
-                id="planejamento-upload"
-                accept=".pdf,.doc,.docx,.odt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-              />
-              <button
-                onClick={handleUploadAttachment}
-                disabled={isSubmitting}
-                className="submit-button"
-              >
-                {isSubmitting ? "Enviando..." : "Enviar Anexo"}
-              </button>
+              {new Date(isoInfo.inicioSemana).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+              })}{" "}
+              -
+              {new Date(isoInfo.fimSemana).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+              })}
             </div>
           </div>
-        )}
 
-        {activeTab === "comentarios" && (
-          <div style={{ marginBottom: "1.5rem", position: "relative" }}>
-            {isRefreshing && (
+          {isoInfo?.compartilhamento &&
+            Array.isArray(isoInfo.compartilhamento.nomesMeses) &&
+            isoInfo.compartilhamento.nomesMeses.length > 1 && (
               <div
                 style={{
-                  position: "absolute",
-                  top: 10,
-                  right: 10,
-                  background: "#007bff",
-                  color: "#fff",
-                  padding: "8px 16px",
-                  borderRadius: 20,
-                  fontSize: ".85rem",
-                  fontWeight: 600,
-                  zIndex: 10,
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  boxShadow: "0 2px 8px rgba(0,123,255,0.3)",
-                  animation: "pulse 1.5s ease-in-out infinite",
+                  padding: "8px 10px",
+                  background: "#ffe5e5",
+                  color: "#c0392b",
+                  border: "1px solid #ffcccc",
+                  borderRadius: 8,
+                  marginBottom: 8,
                 }}
               >
-                <span
-                  style={{
-                    width: 12,
-                    height: 12,
-                    border: "2px solid #fff",
-                    borderTop: "2px solid transparent",
-                    borderRadius: "50%",
-                    animation: "spin .8s linear infinite",
-                  }}
-                ></span>
-                Atualizando...
+                <span>🔗</span>
+                <span>
+                  Também em: {isoInfo.compartilhamento.nomesMeses.join(", ")}
+                </span>
               </div>
             )}
-            <ListaComentarios
-              comentarios={comentariosParaLista}
-              usuarioAtual={{ id: user.userId, cargo: user.cargo }}
-              onComentarioExcluido={handleComentarioExcluido}
-            />
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Adicione um comentário sobre o planejamento..."
-              style={{
-                width: "100%",
-                minHeight: 100,
-                padding: 8,
-                border: "1px solid #ccc",
-                borderRadius: 4,
-                resize: "vertical",
-              }}
-            />
-            <div style={{ textAlign: "right", marginTop: ".5rem" }}>
-              <button
-                onClick={handleAddComment}
-                disabled={isSubmitting || !newComment.trim()}
+
+          {Array.isArray(isoInfo.diasSemana) && (
+            <div style={{ marginTop: 8 }}>
+              <div
                 style={{
-                  padding: "9px 16px",
-                  cursor: "pointer",
-                  background: "#17a2b8",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 4,
-                  fontSize: 14,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: 4,
+                  marginBottom: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#95a5a6",
+                  textTransform: "uppercase",
+                  textAlign: "center",
                 }}
               >
-                {isSubmitting ? "Enviando..." : "Confirmar Comentário"}
-              </button>
+                {["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => (
+                  <div key={i}>{d}</div>
+                ))}
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: 4,
+                }}
+              >
+                {isoInfo.diasSemana.map((dia) => (
+                  <div
+                    key={dia}
+                    title={new Date(dia).toLocaleDateString("pt-BR")}
+                    style={{
+                      aspectRatio: "1 / 1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background:
+                        "linear-gradient(135deg,#ecf0f1 0%,#d5dbdb 100%)",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#2c3e50",
+                    }}
+                  >
+                    {new Date(dia).getDate()}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {canModerate && (
-          <div
+      <div
+        style={{
+          fontSize: ".9rem",
+          color: "#555",
+          marginBottom: "1rem",
+          padding: ".5rem 1rem",
+          background: "#f8f9fa",
+          borderRadius: 4,
+        }}
+      >
+        <p style={{ margin: ".25rem 0" }}>
+          Status:{" "}
+          <strong
             style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "1rem",
-              borderTop: "1px solid #eee",
-              paddingTop: "1.5rem",
+              color:
+                localInfo.status === "Aprovado"
+                  ? "green"
+                  : localInfo.status === "Reprovado"
+                  ? "red"
+                  : "orange",
             }}
           >
-            <button
-              onClick={() => handleUpdateStatus("Reprovado")}
-              style={{
-                padding: "10px 20px",
-                cursor: "pointer",
-                background: "#dc3545",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontSize: "1rem",
-              }}
-              disabled={isSubmitting || localInfo.status === "Reprovado"}
-            >
-              Reprovar
-            </button>
-            <button
-              onClick={() => handleUpdateStatus("Aprovado")}
-              style={{
-                padding: "10px 20px",
-                cursor: "pointer",
-                background: "#28a745",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontSize: "1rem",
-              }}
-              disabled={isSubmitting || localInfo.status === "Aprovado"}
-            >
-              Aprovar
-            </button>
-          </div>
-        )}
-
-        {isAdminGeral && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: "1rem",
-            }}
-          >
-            <button
-              onClick={() =>
-                onDelete?.(
-                  localInfo.id_planejamento,
-                  localInfo.mes,
-                  localInfo.semana
-                )
-              }
-              style={{
-                padding: "10px 20px",
-                cursor: "pointer",
-                background: "#6b7280",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontSize: "1rem",
-              }}
-              type="button"
-            >
-              Excluir Planejamento
-            </button>
-          </div>
-        )}
+            {localInfo.status || "Pendente"}
+          </strong>
+        </p>
+        <p style={{ margin: ".25rem 0" }}>
+          Última modificação: {formatDate(localInfo.data_modificacao)}
+        </p>
       </div>
-    </div>
+
+      <div className="tabs-container" style={{ marginBottom: "1.5rem" }}>
+        <button
+          className={`tab-button ${
+            activeTab === "planejamento" ? "active" : ""
+          }`}
+          onClick={() => setActiveTab("planejamento")}
+        >
+          Planejamento
+        </button>
+        <button
+          className={`tab-button ${
+            activeTab === "comentarios" ? "active" : ""
+          }`}
+          onClick={() => setActiveTab("comentarios")}
+        >
+          Comentários ({comentarios.length})
+        </button>
+      </div>
+
+      {activeTab === "planejamento" && (
+        <div>
+          <div className="form-group" style={{ marginBottom: "1.5rem" }}>
+            <label>Anexos</label>
+            {anexos && anexos.length > 0 ? (
+              <ul style={{ listStyle: "none", padding: 0, marginTop: ".5rem" }}>
+                {anexos.map((anexo) => {
+                  const caminhoDoArquivo =
+                    anexo.path_arquivo ||
+                    anexo.caminho_arquivo ||
+                    anexo.caminho;
+                  const nomeDoArquivo =
+                    anexo.nome_original ||
+                    anexo.nome_arquivo ||
+                    (caminhoDoArquivo
+                      ? caminhoDoArquivo.split("/").pop()
+                      : "Anexo");
+                  return (
+                    <li
+                      key={anexo.id_anexo}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: 8,
+                        border: "1px solid #eee",
+                        borderRadius: 4,
+                        marginBottom: ".5rem",
+                      }}
+                    >
+                      {caminhoDoArquivo ? (
+                        <a
+                          href={`http://localhost:3001/${caminhoDoArquivo}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {nomeDoArquivo}
+                        </a>
+                      ) : (
+                        <span style={{ color: "#dc3545", fontStyle: "italic" }}>
+                          {nomeDoArquivo} (caminho inválido)
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleDeleteAttachment(anexo.id_anexo)}
+                        className="delete-button"
+                        title="Excluir anexo"
+                      >
+                        &times;
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p>Nenhum anexo encontrado.</p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="planejamento-upload">Adicionar novo anexo</label>
+            <input
+              type="file"
+              id="planejamento-upload"
+              accept=".pdf,.doc,.docx,.odt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
+              onChange={(e) => setSelectedFile(e.target.files[0])}
+            />
+            <button
+              onClick={handleUploadAttachment}
+              disabled={isSubmitting}
+              className="submit-button"
+            >
+              {isSubmitting ? "Enviando..." : "Enviar Anexo"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "comentarios" && (
+        <div style={{ marginBottom: "1.5rem", position: "relative" }}>
+          {isRefreshing && (
+            <div
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                background: "#007bff",
+                color: "#fff",
+                padding: "8px 16px",
+                borderRadius: 20,
+                fontSize: ".85rem",
+                fontWeight: 600,
+                zIndex: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                boxShadow: "0 2px 8px rgba(0,123,255,0.3)",
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            >
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  border: "2px solid #fff",
+                  borderTop: "2px solid transparent",
+                  borderRadius: "50%",
+                  animation: "spin .8s linear infinite",
+                }}
+              ></span>
+              Atualizando...
+            </div>
+          )}
+          <ListaComentarios
+            comentarios={comentariosParaLista}
+            usuarioAtual={{ id: user.userId, cargo: user.cargo }}
+            onComentarioExcluido={handleComentarioExcluido}
+          />
+          <textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Adicione um comentário sobre o planejamento..."
+            style={{
+              width: "100%",
+              minHeight: 100,
+              padding: 8,
+              border: "1px solid #ccc",
+              borderRadius: 4,
+              resize: "vertical",
+            }}
+          />
+          <div style={{ textAlign: "right", marginTop: ".5rem" }}>
+            <button
+              onClick={handleAddComment}
+              disabled={isSubmitting || !newComment.trim()}
+              style={{
+                padding: "9px 16px",
+                cursor: "pointer",
+                background: "#17a2b8",
+                color: "#fff",
+                border: "none",
+                borderRadius: 4,
+                fontSize: 14,
+              }}
+            >
+              {isSubmitting ? "Enviando..." : "Confirmar Comentário"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {canModerate && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            borderTop: "1px solid #eee",
+            paddingTop: "1.5rem",
+          }}
+        >
+          <button
+            onClick={() => handleUpdateStatus("Reprovado")}
+            style={{
+              padding: "10px 20px",
+              cursor: "pointer",
+              background: "#dc3545",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: "1rem",
+            }}
+            disabled={isSubmitting || localInfo.status === "Reprovado"}
+          >
+            Reprovar
+          </button>
+          <button
+            onClick={() => handleUpdateStatus("Aprovado")}
+            style={{
+              padding: "10px 20px",
+              cursor: "pointer",
+              background: "#28a745",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: "1rem",
+            }}
+            disabled={isSubmitting || localInfo.status === "Aprovado"}
+          >
+            Aprovar
+          </button>
+        </div>
+      )}
+
+      {isAdminGeral && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: "1rem",
+          }}
+        >
+          <button
+            onClick={() =>
+              onDelete?.(
+                localInfo.id_planejamento,
+                localInfo.mes,
+                localInfo.semana
+              )
+            }
+            style={{
+              padding: "10px 20px",
+              cursor: "pointer",
+              background: "#6b7280",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: "1rem",
+            }}
+            type="button"
+          >
+            Excluir Planejamento
+          </button>
+        </div>
+      )}
+    </ModalBase>
   );
 };
 

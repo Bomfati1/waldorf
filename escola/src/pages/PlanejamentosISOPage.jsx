@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import PlanejamentoISO from "../components/PlanejamentoISO";
+import PlanejamentoISOMensal from "../components/PlanejamentoISOMensal";
 import SelectWithHint from "../components/SelectWithHint";
 import "../css/PlanejamentosISOPage.css";
 
@@ -77,11 +77,7 @@ const PlanejamentosISOPage = () => {
     <div className="planejamentos-iso-page">
       <div className="page-header-iso">
         <div className="header-content">
-          <h1>📅 Planejamentos por Semana ISO</h1>
-          <p className="subtitle">
-            Visualize e gerencie planejamentos usando semanas ISO 8601. Semanas
-            que atravessam meses aparecem em ambos!
-          </p>
+          <h1>📅 Planejamentos</h1>
         </div>
 
         {loading ? (
@@ -139,32 +135,10 @@ const PlanejamentosISOPage = () => {
         )}
       </div>
 
-      {/* Info sobre Semanas ISO */}
-      <div className="info-banner">
-        <div className="info-icon">ℹ️</div>
-        <div className="info-content">
-          <strong>O que são Semanas ISO?</strong>
-          <p>
-            Semanas ISO 8601 são o padrão internacional para numeração de
-            semanas. Cada semana começa na segunda-feira e pode atravessar meses
-            diferentes. Quando isso acontece, a semana aparece em{" "}
-            <strong>ambos os meses</strong>!
-          </p>
-        </div>
-      </div>
-
       {/* Legenda */}
       <div className="legenda">
         <h3>Legenda:</h3>
         <div className="legenda-items">
-          <div className="legenda-item">
-            <div className="legenda-box normal"></div>
-            <span>Semana normal (apenas 1 mês)</span>
-          </div>
-          <div className="legenda-item">
-            <div className="legenda-box compartilhada"></div>
-            <span>Semana compartilhada (2 meses)</span>
-          </div>
           <div className="legenda-item">
             <div className="legenda-badge pendente">Pendente</div>
             <span>Aguardando aprovação</span>
@@ -178,7 +152,10 @@ const PlanejamentosISOPage = () => {
 
       {/* Componente Principal */}
       {turmaSelecionada ? (
-        <PlanejamentoISO turmaId={turmaSelecionada} ano={anoSelecionado} />
+        <PlanejamentoISOMensal
+          turmaId={turmaSelecionada}
+          ano={anoSelecionado}
+        />
       ) : (
         <div className="empty-state-page">
           <div className="empty-icon">📚</div>

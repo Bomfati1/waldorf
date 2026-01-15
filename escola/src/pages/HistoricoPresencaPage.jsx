@@ -259,12 +259,12 @@ const HistoricoPresencaPage = () => {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Nº", 20, y);
-    doc.text("ALUNO", 30, y);
+    doc.text("ALUNO", 35, y);
     doc.text("P", 120, y);
-    doc.text("F", 130, y);
-    doc.text("FJ", 140, y);
-    doc.text("TOTAL", 155, y);
-    doc.text("% PRES.", 175, y);
+    doc.text("F", 132, y);
+    doc.text("FJ", 144, y);
+    doc.text("TOTAL", 160, y);
+    doc.text("% PRES.", 180, y);
     y += 4;
     doc.line(20, y, pageWidth - 20, y);
     y += 6;
@@ -284,24 +284,24 @@ const HistoricoPresencaPage = () => {
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.text("Nº", 20, y);
-        doc.text("ALUNO", 30, y);
+        doc.text("ALUNO", 35, y);
         doc.text("P", 120, y);
-        doc.text("F", 130, y);
-        doc.text("FJ", 140, y);
-        doc.text("TOTAL", 155, y);
-        doc.text("% PRES.", 175, y);
+        doc.text("F", 132, y);
+        doc.text("FJ", 144, y);
+        doc.text("TOTAL", 160, y);
+        doc.text("% PRES.", 180, y);
         y += 4;
         doc.line(20, y, pageWidth - 20, y);
         y += 6;
         doc.setFont("helvetica", "normal");
       }
       doc.text(String(idx + 1), 20, y);
-      doc.text(r.nome, 30, y);
+      doc.text(r.nome, 35, y);
       doc.text(String(r.P), 120, y);
-      doc.text(String(r.F), 130, y);
-      doc.text(String(r.FJ), 140, y);
-      doc.text(String(r.total), 155, y);
-      doc.text(`${r.perc}%`, 175, y, { align: "right" });
+      doc.text(String(r.F), 132, y);
+      doc.text(String(r.FJ), 144, y);
+      doc.text(String(r.total), 160, y);
+      doc.text(`${r.perc}%`, 180, y);
       y += 7;
     }
 
@@ -396,21 +396,6 @@ const HistoricoPresencaPage = () => {
           Histórico de Presença: {turmaInfo?.nome_turma || "Turma"}
         </h1>
         <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => {
-              navigate(`/home/historico-aluno-presenca/${turmaId}`);
-            }}
-            style={{
-              padding: "8px 16px",
-              cursor: "pointer",
-              backgroundColor: "#007bff",
-              color: "white",
-              border: "1px solid #007bff",
-              borderRadius: "4px",
-            }}
-          >
-            Observação
-          </button>
           <button
             onClick={() => navigate(-1)}
             style={{ padding: "8px 16px", cursor: "pointer" }}

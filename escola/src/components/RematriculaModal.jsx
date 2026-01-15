@@ -117,10 +117,11 @@ const RematriculaModal = ({
   const turmasDisponiveis = todasTurmas.filter((t) => t.id !== turmaOrigem.id);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 99999 }}>
       <div
         className="modal-content modal-large"
         onClick={(e) => e.stopPropagation()}
+        style={{ position: 'relative', zIndex: 100000 }}
       >
         {/* Header Fixo */}
         <div className="modal-header">

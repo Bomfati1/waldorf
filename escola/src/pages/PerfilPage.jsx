@@ -14,7 +14,7 @@ const PerfilPage = () => {
     if (!file) return;
 
     // Validar tipo de arquivo
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       setMessage("Por favor, selecione apenas arquivos de imagem.");
       setMessageType("error");
       return;
@@ -32,14 +32,17 @@ const PerfilPage = () => {
     setMessageType("");
 
     const formData = new FormData();
-    formData.append('profilePhoto', file);
+    formData.append("profilePhoto", file);
 
     try {
-      const response = await fetch('http://localhost:3001/upload-profile-photo', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
+      const response = await fetch(
+        "http://localhost:3001/upload-profile-photo",
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        }
+      );
 
       const data = await response.json();
 
@@ -47,7 +50,10 @@ const PerfilPage = () => {
         setMessage(data.message);
         setMessageType("success");
         // Atualiza o contexto do usuário com a nova foto
-        updateUser({ ...user, foto_perfil: data.imageUrl });
+        const updatedUser = { ...user, foto_perfil: data.imageUrl };
+        updateUser(updatedUser);
+        console.log("Foto atualizada:", data.imageUrl);
+        console.log("Usuário atualizado:", updatedUser);
       } else {
         setMessage(data.error || "Erro ao fazer upload da foto.");
         setMessageType("error");
@@ -58,7 +64,7 @@ const PerfilPage = () => {
     } finally {
       setUploading(false);
       // Limpa o input
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
@@ -74,10 +80,13 @@ const PerfilPage = () => {
     setMessageType("");
 
     try {
-      const response = await fetch('http://localhost:3001/remove-profile-photo', {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      const response = await fetch(
+        "http://localhost:3001/remove-profile-photo",
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       const data = await response.json();
 
@@ -107,12 +116,10 @@ const PerfilPage = () => {
   return (
     <div>
       <h1>Meu Perfil</h1>
-      
+
       {/* Mensagens de feedback */}
       {message && (
-        <div className={`profile-message ${messageType}`}>
-          {message}
-        </div>
+        <div className={`profile-message ${messageType}`}>{message}</div>
       )}
 
       <div className="profile-details">
@@ -128,17 +135,17 @@ const PerfilPage = () => {
               <span>{user.nome.charAt(0)}</span>
             </div>
           )}
-          
+
           <div className="photo-buttons">
-            <label 
-              htmlFor="photo-upload" 
-              className={`photo-upload-button ${uploading ? 'uploading' : ''}`}
+            <label
+              htmlFor="photo-upload"
+              className={`photo-upload-button ${uploading ? "uploading" : ""}`}
             >
-              {uploading ? 'Enviando...' : 'Alterar Foto'}
+              {uploading ? "Enviando..." : "Alterar Foto"}
             </label>
-            
+
             {user.foto_perfil && (
-              <button 
+              <button
                 onClick={handleRemovePhoto}
                 className="photo-remove-button"
                 disabled={uploading}
@@ -147,7 +154,7 @@ const PerfilPage = () => {
               </button>
             )}
           </div>
-          
+
           <input
             type="file"
             id="photo-upload"
@@ -157,7 +164,7 @@ const PerfilPage = () => {
             style={{ display: "none" }}
           />
         </div>
-        
+
         <div className="profile-info-text">
           <p>
             <strong>Nome:</strong> {user.nome}

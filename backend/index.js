@@ -37,6 +37,18 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+// Middleware para prevenir cache de páginas autenticadas
+app.use((req, res, next) => {
+  // Adiciona headers para prevenir cache em rotas autenticadas
+  res.set({
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+    "Surrogate-Control": "no-store",
+  });
+  next();
+});
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 async function sendResetEmail(to, resetLink) {
@@ -175,6 +187,11 @@ app.get("/auth/me", authenticateToken, async (req, res) => {
     }
 
     const user = userQuery.rows[0];
+    console.log("[/auth/me] Retornando dados do usuário:", {
+      userId: user.id,
+      nome: user.nome,
+      foto_perfil: user.foto_perfil,
+    });
     res.json({
       userId: user.id,
       email: user.email,
@@ -195,6 +212,14 @@ app.post("/logout", (req, res) => {
     secure: false,
     sameSite: "strict",
   });
+
+  // Headers adicionais para garantir que não há cache
+  res.set({
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+  });
+
   res.json({ message: "Logout realizado com sucesso" });
 });
 
@@ -425,6 +450,30 @@ const relatoriosStorage = multer.diskStorage({
 });
 
 const relatoriosUpload = multer({ storage: relatoriosStorage });
+
+// Configuração do multer para anexos de alunos
+const alunoAnexosUploadDir = path.join(__dirname, "uploads", "anexos_aluno");
+if (!fs.existsSync(alunoAnexosUploadDir)) {
+  fs.mkdirSync(alunoAnexosUploadDir, { recursive: true });
+}
+
+const alunoAnexosStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, alunoAnexosUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const timestamp = Date.now();
+    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.]/g, "_");
+    cb(null, `${timestamp}_${sanitized}`);
+  },
+});
+
+const alunoAnexosUpload = multer({
+  storage: alunoAnexosStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // Limite de 10MB
+  },
+});
 
 // Função auxiliar para determinar o tipo MIME
 function getMimeType(filename) {
@@ -828,9 +877,10 @@ app.post("/interessados", authenticateToken, async (req, res) => {
       : !!intencao;
 
   // O campo 'status' é definido como 'Entrou Em Contato' por padrão na inserção.
+  // O campo 'data_contato' usa NOW() para registrar a data/hora atual
   const insertQuery = `
-    INSERT INTO interessados (nome, telefone, como_conheceu, intencao, status)
-    VALUES ($1, $2, $3, $4, 'Entrou Em Contato')
+    INSERT INTO interessados (nome, telefone, como_conheceu, intencao, status, data_contato)
+    VALUES ($1, $2, $3, $4, 'Entrou Em Contato', NOW())
     RETURNING *;
   `;
 
@@ -841,6 +891,39 @@ app.post("/interessados", authenticateToken, async (req, res) => {
       como_conheceu,
       intencaoBooleana,
     ]);
+
+    // Criar notificação para administradores sobre novo lead
+    try {
+      console.log(
+        "📬 [INTERESSADO] Criando notificação para administradores..."
+      );
+      const admins = await pool.query(
+        `SELECT id FROM usuarios WHERE cargo ILIKE '%admin%'`
+      );
+
+      if (admins.rows.length > 0) {
+        console.log(
+          `📬 [INTERESSADO] Encontrados ${admins.rows.length} administradores`
+        );
+        for (const admin of admins.rows) {
+          await pool.query(
+            `INSERT INTO notificacoes (usuario_id, tipo, mensagem, lida, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [
+              admin.id,
+              "prematricula",
+              `Novo lead de pré-matrícula: ${nome}. Telefone: ${telefone}`,
+              false,
+            ]
+          );
+        }
+        console.log("✅ [INTERESSADO] Notificações criadas com sucesso!");
+      }
+    } catch (notifError) {
+      console.error("⚠️ [INTERESSADO] Erro ao criar notificação:", notifError);
+      // Não bloqueia a criação do interessado
+    }
+
     res.status(201).json(novoInteressado.rows[0]);
   } catch (error) {
     console.error("Erro ao inserir interessado:", error);
@@ -1139,8 +1222,21 @@ app.post(
 // Rota para ATUALIZAR (EDITAR) um responsável
 app.put("/responsaveis/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { nome_completo, nome, email, telefone, outro_telefone, cpf, rg } =
-    req.body;
+  const {
+    nome_completo,
+    nome,
+    email,
+    telefone,
+    outro_telefone,
+    cpf,
+    rg,
+    cidade,
+    bairro,
+    tipo_logradouro,
+    logradouro,
+    numero,
+    complemento,
+  } = req.body;
 
   // Aceita tanto nome quanto nome_completo para compatibilidade
   const nomeField = nome_completo || nome;
@@ -1156,11 +1252,34 @@ app.put("/responsaveis/:id", authenticateToken, async (req, res) => {
   // Armazena CPF somente com dígitos (normalizado)
   const finalCpf = cpf && cpf.trim() ? cpf.trim().replace(/[^0-9]/g, "") : null;
   const finalRg = rg && rg.trim() ? rg.trim() : null;
+  const finalCidade = cidade && cidade.trim() ? cidade.trim() : null;
+  const finalBairro = bairro && bairro.trim() ? bairro.trim() : null;
+  const finalTipoLogradouro =
+    tipo_logradouro && tipo_logradouro.trim() ? tipo_logradouro.trim() : null;
+  const finalLogradouro =
+    logradouro && logradouro.trim() ? logradouro.trim() : null;
+  const finalNumero = numero && numero.trim() ? numero.trim() : null;
+  const finalComplemento =
+    complemento && complemento.trim() ? complemento.trim() : null;
 
   try {
     const updateQuery = await pool.query(
-      `UPDATE familias SET nome_completo = $1, email = $2, telefone = $3, outro_telefone = $4, cpf = $5, rg = $6 WHERE id = $7 RETURNING *`,
-      [nomeField, email, telefone, outro_telefone, finalCpf, finalRg, id]
+      `UPDATE familias SET nome_completo = $1, email = $2, telefone = $3, outro_telefone = $4, cpf = $5, rg = $6, cidade = $7, bairro = $8, tipo_logradouro = $9, logradouro = $10, numero = $11, complemento = $12 WHERE id = $13 RETURNING *`,
+      [
+        nomeField,
+        email,
+        telefone,
+        outro_telefone,
+        finalCpf,
+        finalRg,
+        finalCidade,
+        finalBairro,
+        finalTipoLogradouro,
+        finalLogradouro,
+        finalNumero,
+        finalComplemento,
+        id,
+      ]
     );
 
     if (updateQuery.rowCount === 0) {
@@ -1181,8 +1300,20 @@ app.put("/responsaveis/:id", authenticateToken, async (req, res) => {
 // Rota para CRIAR um novo responsável (familia)
 app.post("/responsaveis", authenticateToken, async (req, res) => {
   try {
-    const { nome_completo, email, telefone, outro_telefone, cpf, rg } =
-      req.body || {};
+    const {
+      nome_completo,
+      email,
+      telefone,
+      outro_telefone,
+      cpf,
+      rg,
+      cidade,
+      bairro,
+      tipo_logradouro,
+      logradouro,
+      numero,
+      complemento,
+    } = req.body || {};
     if (!nome_completo || !email || !telefone) {
       return res
         .status(400)
@@ -1197,9 +1328,28 @@ app.post("/responsaveis", authenticateToken, async (req, res) => {
             .replace(/[^0-9]/g, "")
         : null;
     const finalRg = rg && String(rg).trim() ? String(rg).trim() : null;
+    const finalCidade =
+      cidade && String(cidade).trim() ? String(cidade).trim() : null;
+    const finalBairro =
+      bairro && String(bairro).trim() ? String(bairro).trim() : null;
+    const finalTipoLogradouro =
+      tipo_logradouro && String(tipo_logradouro).trim()
+        ? String(tipo_logradouro).trim()
+        : null;
+    const finalLogradouro =
+      logradouro && String(logradouro).trim()
+        ? String(logradouro).trim()
+        : null;
+    const finalNumero =
+      numero && String(numero).trim() ? String(numero).trim() : null;
+    const finalComplemento =
+      complemento && String(complemento).trim()
+        ? String(complemento).trim()
+        : null;
+
     const insert = await pool.query(
-      `INSERT INTO familias (nome_completo, email, telefone, outro_telefone, cpf, rg)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO familias (nome_completo, email, telefone, outro_telefone, cpf, rg, cidade, bairro, tipo_logradouro, logradouro, numero, complemento)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [
         nome_completo,
@@ -1208,6 +1358,12 @@ app.post("/responsaveis", authenticateToken, async (req, res) => {
         outro_telefone || null,
         finalCpf,
         finalRg,
+        finalCidade,
+        finalBairro,
+        finalTipoLogradouro,
+        finalLogradouro,
+        finalNumero,
+        finalComplemento,
       ]
     );
     return res.status(201).json(insert.rows[0]);
@@ -1335,30 +1491,107 @@ app.post(
   authorizeRoles("Administrador Geral"),
   async (req, res) => {
     const { nome, email, password, cargo } = req.body;
+
+    // Validação básica de campos obrigatórios
     if (!nome || !email || !password) {
       return res
         .status(400)
         .json({ error: "Nome, email e senha são obrigatórios." });
     }
+
+    // Validação de sintaxe do e-mail
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ error: "Por favor, insira um endereço de e-mail válido." });
+    }
+
+    // Normalizar e-mail (lowercase para evitar duplicatas por case)
+    const normalizedEmail = email.toLowerCase().trim();
+
     try {
+      // Verificar se o e-mail já existe no banco
+      const emailCheck = await db.query(
+        "SELECT id FROM usuarios WHERE LOWER(email) = $1",
+        [normalizedEmail]
+      );
+
+      if (emailCheck.rows.length > 0) {
+        return res
+          .status(409)
+          .json({ error: "Este e-mail já está cadastrado no sistema." });
+      }
+
+      // Criar hash da senha
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Inserir novo usuário
       const queryText =
         "INSERT INTO usuarios (nome, email, senha, cargo) VALUES ($1, $2, $3, $4) RETURNING id, nome, email, cargo";
-      const queryParams = [nome, email, hashedPassword, cargo || "professor"];
+      const queryParams = [
+        nome,
+        normalizedEmail,
+        hashedPassword,
+        cargo || "professor",
+      ];
       const newUser = await db.query(queryText, queryParams);
+
       res.status(201).json(newUser.rows[0]);
     } catch (err) {
-      console.error(err.message);
+      console.error("Erro ao registrar usuário:", err.message);
+
+      // Tratamento de erro de duplicata (fallback caso a verificação anterior falhe)
       if (err.code === "23505") {
         return res
           .status(409)
           .json({ error: "Este e-mail já está cadastrado." });
       }
+
       res.status(500).json({ error: "Erro ao registrar usuário." });
     }
   }
 );
+// Rota para verificar se um e-mail já está cadastrado (útil para validação em tempo real)
+app.post("/check-email", authenticateToken, async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email é obrigatório." });
+  }
+
+  // Validação de sintaxe
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      available: false,
+      error: "Formato de e-mail inválido.",
+    });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    const result = await db.query(
+      "SELECT id FROM usuarios WHERE LOWER(email) = $1",
+      [normalizedEmail]
+    );
+
+    const available = result.rows.length === 0;
+
+    res.status(200).json({
+      available,
+      message: available
+        ? "E-mail disponível para cadastro."
+        : "Este e-mail já está cadastrado no sistema.",
+    });
+  } catch (err) {
+    console.error("Erro ao verificar e-mail:", err.message);
+    res.status(500).json({ error: "Erro ao verificar e-mail." });
+  }
+});
+
 // Rota para buscar todos os usuários com o cargo de "professor"
 app.get(
   "/usuarios/professores",
@@ -1441,6 +1674,160 @@ app.get("/alunos/:id/detalhes", async (req, res) => {
   }
 });
 
+// Rota para BUSCAR presenças de um aluno específico
+app.get("/alunos/:id/presencas", async (req, res) => {
+  const { id } = req.params;
+  const { ano } = req.query;
+
+  try {
+    let query = `
+      SELECT 
+        p.data_aula,
+        p.status_presenca,
+        p.observacao,
+        t.nome_turma,
+        t.ano_letivo
+      FROM presencas p
+      JOIN turmas t ON p.turma_id = t.id
+      WHERE p.aluno_id = $1
+    `;
+
+    const params = [id];
+
+    if (ano) {
+      query += ` AND t.ano_letivo = $2`;
+      params.push(ano);
+    }
+
+    query += ` ORDER BY p.data_aula DESC`;
+
+    const result = await db.query(query, params);
+
+    res.status(200).json({ presencas: result.rows });
+  } catch (err) {
+    console.error("Erro ao buscar presenças do aluno:", err.message);
+    res.status(500).json({ error: "Erro ao buscar presenças do aluno." });
+  }
+});
+
+// Rota para LISTAR anexos de um aluno
+app.get("/alunos/:id/anexos", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const query = `
+      SELECT id, aluno_id, nome_original, caminho_arquivo, tamanho, data_upload
+      FROM aluno_anexos
+      WHERE aluno_id = $1
+      ORDER BY data_upload DESC
+    `;
+
+    const result = await db.query(query, [id]);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("Erro ao buscar anexos do aluno:", err.message);
+    res.status(500).json({ error: "Erro ao buscar anexos do aluno." });
+  }
+});
+
+// Rota para FAZER UPLOAD de anexo
+app.post(
+  "/alunos/:id/anexos",
+  authenticateToken,
+  alunoAnexosUpload.single("arquivo"),
+  async (req, res) => {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo foi enviado." });
+    }
+
+    try {
+      const { originalname, filename, size, path: filePath } = req.file;
+      const caminhoRelativo = `/uploads/anexos_aluno/${filename}`;
+
+      const query = `
+      INSERT INTO aluno_anexos (aluno_id, nome_original, caminho_arquivo, tamanho)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, aluno_id, nome_original, caminho_arquivo, tamanho, data_upload
+    `;
+
+      const result = await db.query(query, [
+        id,
+        originalname,
+        caminhoRelativo,
+        size,
+      ]);
+
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      console.error("Erro ao fazer upload do anexo:", err.message);
+
+      // Tentar deletar o arquivo se falhou salvar no banco
+      if (req.file && req.file.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.error("Erro ao deletar arquivo:", e);
+        }
+      }
+
+      res.status(500).json({ error: "Erro ao fazer upload do anexo." });
+    }
+  }
+);
+
+// Rota para EXCLUIR anexo
+app.delete(
+  "/alunos/:alunoId/anexos/:anexoId",
+  authenticateToken,
+  async (req, res) => {
+    const { alunoId, anexoId } = req.params;
+
+    try {
+      // Buscar o anexo para obter o caminho do arquivo
+      const selectQuery = `
+      SELECT caminho_arquivo
+      FROM aluno_anexos
+      WHERE id = $1 AND aluno_id = $2
+    `;
+
+      const selectResult = await db.query(selectQuery, [anexoId, alunoId]);
+
+      if (selectResult.rows.length === 0) {
+        return res.status(404).json({ error: "Anexo não encontrado." });
+      }
+
+      const caminhoArquivo = selectResult.rows[0].caminho_arquivo;
+
+      // Deletar do banco de dados
+      const deleteQuery = `
+      DELETE FROM aluno_anexos
+      WHERE id = $1 AND aluno_id = $2
+    `;
+
+      await db.query(deleteQuery, [anexoId, alunoId]);
+
+      // Tentar deletar o arquivo físico
+      if (caminhoArquivo) {
+        const fullPath = path.join(__dirname, caminhoArquivo);
+        try {
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+          }
+        } catch (e) {
+          console.error("Erro ao deletar arquivo físico:", e);
+        }
+      }
+
+      res.status(200).json({ message: "Anexo excluído com sucesso." });
+    } catch (err) {
+      console.error("Erro ao excluir anexo:", err.message);
+      res.status(500).json({ error: "Erro ao excluir anexo." });
+    }
+  }
+);
+
 // Rota para ATUALIZAR os dados de um aluno e sua família
 app.put("/alunos/:id", async (req, res) => {
   const { id } = req.params;
@@ -1503,26 +1890,62 @@ app.put("/alunos/:id", async (req, res) => {
       familia_id,
     ]);
 
-    // Atualiza ou insere a turma do aluno se turma_id for fornecido
-    if (turma_id) {
-      // Verifica se já existe relação
-      const rel = await db.query(
-        "SELECT * FROM turma_alunos WHERE aluno_id = $1",
-        [id]
-      );
-      if (rel.rows.length) {
-        // Atualiza relação existente
-        await db.query(
-          "UPDATE turma_alunos SET turma_id = $1 WHERE aluno_id = $2",
-          [turma_id, id]
+    // Atualiza, insere ou remove a turma do aluno
+    if (turma_id !== undefined) {
+      if (turma_id === null) {
+        // Se turma_id for null, remove o aluno de qualquer turma (define como "Sem Turma")
+        console.log(
+          `[UPDATE ALUNO] Removendo aluno ${id} de todas as turmas (Sem Turma)`
         );
-      } else {
-        // Cria nova relação
-        await db.query(
-          "INSERT INTO turma_alunos (aluno_id, turma_id) VALUES ($1, $2)",
-          [id, turma_id]
+        await db.query("DELETE FROM turma_alunos WHERE aluno_id = $1", [id]);
+      } else if (turma_id !== "") {
+        // Se turma_id for fornecido, atualiza ou insere
+        const turmaIdNum = Number(turma_id);
+        console.log(
+          `[UPDATE ALUNO] Processando turma_id: ${turmaIdNum} para aluno ${id}`
         );
+
+        // Verifica se já existe a relação ESPECÍFICA (aluno + turma)
+        const rel = await db.query(
+          "SELECT * FROM turma_alunos WHERE aluno_id = $1 AND turma_id = $2",
+          [id, turmaIdNum]
+        );
+
+        if (rel.rows.length === 0) {
+          console.log(
+            `[UPDATE ALUNO] Relação aluno ${id} + turma ${turmaIdNum} não existe, processando...`
+          );
+          // Só insere se a relação específica não existir
+          // Primeiro, verifica se o aluno tem alguma matrícula anterior
+          const existingRel = await db.query(
+            "SELECT * FROM turma_alunos WHERE aluno_id = $1",
+            [id]
+          );
+
+          if (existingRel.rows.length > 0) {
+            // Se já existe uma relação (em outra turma), atualiza para a nova turma
+            console.log(
+              `[UPDATE ALUNO] Atualizando turma existente para aluno ${id}`
+            );
+            await db.query(
+              "UPDATE turma_alunos SET turma_id = $1 WHERE aluno_id = $2",
+              [turmaIdNum, id]
+            );
+          } else {
+            // Se não existe nenhuma relação, cria uma nova
+            console.log(`[UPDATE ALUNO] Criando nova relação para aluno ${id}`);
+            await db.query(
+              "INSERT INTO turma_alunos (aluno_id, turma_id) VALUES ($1, $2)",
+              [id, turmaIdNum]
+            );
+          }
+        } else {
+          console.log(
+            `[UPDATE ALUNO] Relação aluno ${id} + turma ${turmaIdNum} já existe, ignorando`
+          );
+        }
       }
+      // Se turma_id for string vazia '', não faz nada (mantém como está)
     }
 
     await db.query("COMMIT"); // Confirma as alterações
@@ -1531,6 +1954,19 @@ app.put("/alunos/:id", async (req, res) => {
   } catch (err) {
     await db.query("ROLLBACK"); // Desfaz as alterações em caso de erro
     console.error("Erro ao atualizar dados:", err.message);
+    console.error("Stack:", err.stack);
+
+    // Mensagem de erro mais específica para constraint de unicidade
+    if (
+      err.code === "23505" &&
+      err.constraint === "turma_alunos_turma_aluno_unique"
+    ) {
+      return res.status(409).json({
+        error:
+          "Este aluno já está matriculado nesta turma. Não é possível duplicar a matrícula.",
+      });
+    }
+
     res.status(500).json({ error: "Erro interno ao atualizar os dados." });
   }
 });
@@ -1651,12 +2087,22 @@ app.post("/turmas", async (req, res) => {
     // Insere a nova turma na tabela 'turmas', usando o campo 'nivel' para a coluna 'nivel_ensino'
     // Normaliza período para valores aceitos pelo ENUM (ex: 'manha', 'tarde', 'noite', 'integral')
     const periodoNorm = normalizePeriodo(periodo);
-    const allowed = new Set(["manha", "tarde", "noite", "integral"]);
-    if (!allowed.has(periodoNorm)) {
+    const allowedPeriodo = new Set(["manha", "tarde", "noite", "integral"]);
+    if (!allowedPeriodo.has(periodoNorm)) {
       await client.query("ROLLBACK");
       return res.status(400).json({
         error:
           "Período inválido. Use um dos valores: manha, tarde, noite, integral.",
+      });
+    }
+
+    // Valida o nível
+    const allowedNivel = new Set(["jardim", "maternal", "fundamental"]);
+    if (!allowedNivel.has(nivel)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error:
+          "Nível inválido. Use um dos valores: jardim, maternal, fundamental.",
       });
     }
 
@@ -1689,7 +2135,150 @@ app.post("/turmas", async (req, res) => {
   }
 });
 
-// Rota para DELETAR uma turma
+// Rota para EXCLUIR todas as turmas de um ano específico
+// IMPORTANTE: Esta rota DEVE vir ANTES da rota /turmas/:id
+// para que o Express não interprete "ano" como um ID de turma
+app.delete("/turmas/ano/:anoLetivo", authenticateToken, async (req, res) => {
+  const { anoLetivo } = req.params;
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Busca todas as turmas do ano
+    const turmasResult = await client.query(
+      "SELECT id FROM turmas WHERE ano_letivo = $1",
+      [anoLetivo]
+    );
+
+    if (turmasResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res
+        .status(404)
+        .json({ error: "Nenhuma turma encontrada para este ano." });
+    }
+
+    const turmaIds = turmasResult.rows.map((t) => t.id);
+    const placeholders = turmaIds.map((_, i) => `$${i + 1}`).join(",");
+
+    // 1) Coleta planejamentos das turmas
+    const planRows = await client.query(
+      `SELECT id_planejamento FROM planejamentos WHERE turma_id IN (${placeholders})`,
+      turmaIds
+    );
+    const planIds = planRows.rows.map((r) => r.id_planejamento);
+
+    // 2) Remove dependências dos planejamentos
+    if (planIds.length > 0) {
+      const planPlaceholders = planIds.map((_, i) => `$${i + 1}`).join(",");
+      await client.query(
+        `DELETE FROM planejamento_comentarios WHERE planejamento_id IN (${planPlaceholders})`,
+        planIds
+      );
+      await client.query(
+        `DELETE FROM planejamento_anexos WHERE planejamento_id IN (${planPlaceholders})`,
+        planIds
+      );
+      await client.query(
+        `DELETE FROM planejamentos WHERE id_planejamento IN (${planPlaceholders})`,
+        planIds
+      );
+    }
+
+    // 3) Remove presenças
+    await client.query(
+      `DELETE FROM presencas WHERE turma_id IN (${placeholders})`,
+      turmaIds
+    );
+
+    // 4) Remove vínculos com professores e alunos
+    await client.query(
+      `DELETE FROM turma_professores WHERE turma_id IN (${placeholders})`,
+      turmaIds
+    );
+
+    // Coleta todos os alunos das turmas antes de deletar
+    const alunosDasTurmas = await client.query(
+      `SELECT DISTINCT aluno_id FROM turma_alunos WHERE turma_id IN (${placeholders})`,
+      turmaIds
+    );
+
+    await client.query(
+      `DELETE FROM turma_alunos WHERE turma_id IN (${placeholders})`,
+      turmaIds
+    );
+
+    // Desativa alunos que não estão mais em nenhuma turma
+    for (const row of alunosDasTurmas.rows) {
+      const alunoId = row.aluno_id;
+      const turmasRestantes = await client.query(
+        "SELECT COUNT(*) as count FROM turma_alunos WHERE aluno_id = $1",
+        [alunoId]
+      );
+
+      if (parseInt(turmasRestantes.rows[0].count) === 0) {
+        await client.query(
+          "UPDATE alunos SET status_aluno = FALSE WHERE id = $1",
+          [alunoId]
+        );
+        console.log(
+          `[EXCLUIR TURMAS ANO] Aluno ${alunoId} desativado (sem turmas)`
+        );
+      }
+    }
+
+    // 5) Remove relatórios associados
+    try {
+      const rels = await client.query(
+        `SELECT caminho_arquivo FROM relatorios WHERE tipo_destino = 'turma' AND destino_id IN (${placeholders})`,
+        turmaIds
+      );
+
+      if (rels.rows.length > 0) {
+        await client.query(
+          `DELETE FROM relatorios WHERE tipo_destino = 'turma' AND destino_id IN (${placeholders})`,
+          turmaIds
+        );
+
+        // Remove arquivos do disco
+        for (const r of rels.rows) {
+          try {
+            if (r.caminho_arquivo) {
+              fs.unlinkSync(path.resolve(__dirname, r.caminho_arquivo));
+            }
+          } catch (e) {
+            console.warn(
+              "[EXCLUIR TURMAS] Falha ao remover arquivo:",
+              r.caminho_arquivo,
+              e.message
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[EXCLUIR TURMAS] Falha ao limpar relatórios:", e.message);
+    }
+
+    // 6) Remove todas as turmas do ano
+    await client.query(`DELETE FROM turmas WHERE ano_letivo = $1`, [anoLetivo]);
+
+    await client.query("COMMIT");
+    res.status(200).json({
+      message: `Todas as turmas do ano ${anoLetivo} foram excluídas com sucesso.`,
+      deletedCount: turmasResult.rows.length,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Erro ao excluir turmas do ano:", err.message);
+    res
+      .status(500)
+      .json({ error: "Erro interno ao excluir as turmas do ano." });
+  } finally {
+    client.release();
+  }
+});
+
+// Rota para DELETAR uma turma individual
 app.delete(
   "/turmas/:id",
   authenticateToken,
@@ -1746,9 +2335,35 @@ app.delete(
       await client.query("DELETE FROM turma_professores WHERE turma_id = $1", [
         turmaId,
       ]);
+
+      // Antes de deletar, pega os IDs dos alunos para verificar depois
+      const alunosDaTurma = await client.query(
+        "SELECT aluno_id FROM turma_alunos WHERE turma_id = $1",
+        [turmaId]
+      );
+
       await client.query("DELETE FROM turma_alunos WHERE turma_id = $1", [
         turmaId,
       ]);
+
+      // Desativa alunos que não estão mais em nenhuma turma
+      for (const row of alunosDaTurma.rows) {
+        const alunoId = row.aluno_id;
+        const turmasRestantes = await client.query(
+          "SELECT COUNT(*) as count FROM turma_alunos WHERE aluno_id = $1",
+          [alunoId]
+        );
+
+        if (parseInt(turmasRestantes.rows[0].count) === 0) {
+          await client.query(
+            "UPDATE alunos SET status_aluno = FALSE WHERE id = $1",
+            [alunoId]
+          );
+          console.log(
+            `[EXCLUIR TURMA] Aluno ${alunoId} desativado (sem turmas)`
+          );
+        }
+      }
 
       // 5) Relatórios associados à turma (opcional, se houver)
       try {
@@ -1901,24 +2516,24 @@ app.post(
         novoAnoLetivo: novoAnoLetivo ?? null,
       });
 
-      // UPSERT atômico: insere todos com destino; se já existir, atualiza turma_id
+      // INSERT para duplicar alunos (mantém na turma original E adiciona na turma destino)
+      // Ignora conflitos caso o aluno já esteja na turma destino
       const valuesClause = alunosIdsNum
         .map((_, i) => `($1, $${i + 2})`)
         .join(",");
       const params = [turmaDestinoIdNum, ...alunosIdsNum];
-      const upsertSQL = `
+      const insertSQL = `
         INSERT INTO turma_alunos (turma_id, aluno_id)
         VALUES ${valuesClause}
-        ON CONFLICT (aluno_id) DO UPDATE
-          SET turma_id = EXCLUDED.turma_id
+        ON CONFLICT (turma_id, aluno_id) DO NOTHING
       `;
       console.log(
-        "[REMATRICULA] UPSERT turma_alunos:",
-        upsertSQL,
+        "[REMATRICULA] INSERT turma_alunos (duplicar):",
+        insertSQL,
         "params:",
         params
       );
-      await client.query(upsertSQL, params);
+      await client.query(insertSQL, params);
 
       // Busca informações dos alunos rematriculados
       const alunosInfo = await client.query(
@@ -1947,14 +2562,19 @@ app.post(
 // Rota para LISTAR alunos ATIVOS
 app.get("/alunos/ativos", authenticateToken, async (req, res) => {
   try {
+    const anoAtual = new Date().getFullYear();
     const allAlunos = await db.query(
       `SELECT
         a.id, a.nome_completo, a.data_nascimento, a.status_pagamento, a.status_aluno, a.foto_perfil,
-        ta.turma_id
+        ta.turma_id,
+        t.nome_turma,
+        t.ano_letivo
        FROM alunos a
        LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
+       LEFT JOIN turmas t ON ta.turma_id = t.id AND t.ano_letivo = $1
        WHERE a.status_aluno = TRUE
-       ORDER BY nome_completo ASC`
+       ORDER BY nome_completo ASC`,
+      [anoAtual]
     );
     res.status(200).json(allAlunos.rows);
   } catch (err) {
@@ -1965,15 +2585,20 @@ app.get("/alunos/ativos", authenticateToken, async (req, res) => {
 // Rota para LISTAR alunos INATIVOS (com dados da família)
 app.get("/alunos/inativos", authenticateToken, async (req, res) => {
   try {
-    // A query agora seleciona o status_pagamento, que estava faltando.
-    const allAlunos = await db.query(`
-       SELECT
+    const anoAtual = new Date().getFullYear();
+    const allAlunos = await db.query(
+      `SELECT
         a.id, a.nome_completo, a.data_nascimento, a.status_pagamento, a.status_aluno, a.foto_perfil,
-        ta.turma_id
+        ta.turma_id,
+        t.nome_turma,
+        t.ano_letivo
        FROM alunos a
        LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
+       LEFT JOIN turmas t ON ta.turma_id = t.id AND t.ano_letivo = $1
        WHERE status_aluno = FALSE 
-       ORDER BY nome_completo ASC`);
+       ORDER BY nome_completo ASC`,
+      [anoAtual]
+    );
     res.status(200).json(allAlunos.rows);
   } catch (err) {
     console.error(err.message);
@@ -1984,6 +2609,20 @@ app.get("/alunos/inativos", authenticateToken, async (req, res) => {
 app.patch("/alunos/:id/ativar", async (req, res) => {
   const { id } = req.params;
   try {
+    // Verifica se o aluno está vinculado a alguma turma
+    const turmaCheck = await db.query(
+      "SELECT turma_id FROM turma_alunos WHERE aluno_id = $1",
+      [id]
+    );
+
+    // Se o aluno não está em nenhuma turma, não permite ativar
+    if (turmaCheck.rowCount === 0) {
+      return res.status(400).json({
+        error:
+          "Não é possível ativar um aluno que não está vinculado a nenhuma turma.",
+      });
+    }
+
     const updatedAluno = await db.query(
       "UPDATE alunos SET status_aluno = TRUE WHERE id = $1 RETURNING *",
       [id]
@@ -2027,9 +2666,9 @@ app.post("/alunos/:alunoId/matricular", async (req, res) => {
       throw new Error("Aluno não encontrado.");
     }
 
-    // 2. Matricula o aluno na turma
+    // 2. Matricula o aluno na turma (com proteção contra duplicatas)
     await client.query(
-      "INSERT INTO turma_alunos (aluno_id, turma_id) VALUES ($1, $2)",
+      "INSERT INTO turma_alunos (aluno_id, turma_id) VALUES ($1, $2) ON CONFLICT (turma_id, aluno_id) DO NOTHING",
       [alunoId, turmaId]
     );
 
@@ -2142,6 +2781,35 @@ app.delete("/alunos/:id", async (req, res) => {
   }
 });
 
+// Nova rota: Atualiza automaticamente o status de alunos sem turma para inativo
+app.patch(
+  "/alunos/atualizar-status-sem-turma",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      // Busca todos os alunos que não estão em nenhuma turma mas estão ativos
+      const result = await db.query(`
+      UPDATE alunos 
+      SET status_aluno = FALSE 
+      WHERE id NOT IN (SELECT DISTINCT aluno_id FROM turma_alunos)
+      AND status_aluno = TRUE
+      RETURNING id, nome_completo
+    `);
+
+      res.status(200).json({
+        message: `${result.rowCount} aluno(s) foram desativados por não estarem vinculados a nenhuma turma.`,
+        alunos: result.rows,
+      });
+    } catch (err) {
+      console.error(
+        "Erro ao atualizar status de alunos sem turma:",
+        err.message
+      );
+      res.status(500).json({ error: "Erro ao atualizar status dos alunos." });
+    }
+  }
+);
+
 // Rota para DELETAR um usuário
 app.delete(
   "/usuarios/:id",
@@ -2222,7 +2890,7 @@ app.delete(
 );
 
 // --- Rotas de Suporte (para preencher os selects no frontend) ---
-app.get("/alunos/ativos", async (req, res) => {
+app.get("/alunos/ativos-simples", async (req, res) => {
   const result = await pool.query(
     "SELECT id, nome_completo FROM alunos WHERE status_aluno = TRUE ORDER BY nome_completo"
   );
@@ -2577,8 +3245,8 @@ app.post(
       // 1. Tenta encontrar um planejamento existente
       let findResult = await db.query(
         `SELECT * FROM planejamentos
-       WHERE turma_id = $1 AND ano = $2 AND mes = $3 AND semana = $4`,
-        [turma_id, ano, mes, semana]
+       WHERE turma_id = $1 AND ano = $2 AND mes = $3`,
+        [turma_id, ano, mes]
       );
 
       let planejamento;
@@ -2589,9 +3257,9 @@ app.post(
       } else {
         // 2b. Se não encontrou, cria um novo com status 'Pendente'
         const insertResult = await db.query(
-          `INSERT INTO planejamentos (turma_id, ano, mes, semana, status, usuario_id)
-         VALUES ($1, $2, $3, $4, 'Pendente', $5) RETURNING *`,
-          [turma_id, ano, mes, semana, usuario_id]
+          `INSERT INTO planejamentos (turma_id, ano, mes, status, usuario_id)
+         VALUES ($1, $2, $3, 'Pendente', $4) RETURNING *`,
+          [turma_id, ano, mes, usuario_id]
         );
         planejamento = insertResult.rows[0];
       }
@@ -2600,7 +3268,7 @@ app.post(
       // Este código assume que você tem tabelas 'usuarios' e 'turmas' com as colunas corretas
       const fullPlanejamentoResult = await db.query(
         `SELECT
-          p.id_planejamento, p.turma_id, p.ano, p.mes, p.semana, p.status,
+          p.id_planejamento, p.turma_id, p.ano, p.mes, p.status,
           t.nome_turma AS nome_turma, -- Supondo que a coluna em 'turmas' se chama 'nome'
           u.nome AS nome_usuario, -- Supondo que a coluna em 'usuarios' se chama 'nome'
           COALESCE(
@@ -2741,7 +3409,7 @@ app.put(
 
       // Buscar informações do planejamento e criar notificações
       const planejamentoInfo = await db.query(
-        `SELECT p.ano, p.mes, p.semana, p.usuario_id as criador_id, u.nome as avaliador_nome
+        `SELECT p.ano, p.mes, p.usuario_id as criador_id, u.nome as avaliador_nome
          FROM planejamentos p
          JOIN usuarios u ON u.id = $2
          WHERE p.id_planejamento = $1`,
@@ -2749,9 +3417,9 @@ app.put(
       );
 
       if (planejamentoInfo.rows.length > 0) {
-        const { ano, mes, semana, criador_id, avaliador_nome } =
+        const { ano, mes, criador_id, avaliador_nome } =
           planejamentoInfo.rows[0];
-        const descricao = `Planejamento ${mes}/${ano} - Semana ${semana}`;
+        const descricao = `Planejamento ${mes}/${ano}`;
         const tipoNotificacao =
           status === "Aprovado" ? "aprovado" : "reprovado";
         const emoji = status === "Aprovado" ? "✅" : "❌";
@@ -2892,7 +3560,7 @@ app.post(
 
       // Buscar informações do planejamento e criar notificações
       const planejamentoInfo = await db.query(
-        `SELECT p.ano, p.mes, p.semana, p.usuario_id as criador_id, u.nome as comentarista_nome
+        `SELECT p.ano, p.mes, p.usuario_id as criador_id, u.nome as comentarista_nome
          FROM planejamentos p
          JOIN usuarios u ON u.id = $2
          WHERE p.id_planejamento = $1`,
@@ -2900,10 +3568,10 @@ app.post(
       );
 
       if (planejamentoInfo.rows.length > 0) {
-        const { ano, mes, semana, criador_id, comentarista_nome } =
+        const { ano, mes, criador_id, comentarista_nome } =
           planejamentoInfo.rows[0];
 
-        const descricao = `Planejamento ${mes}/${ano} - Semana ${semana}`;
+        const descricao = `Planejamento ${mes}/${ano}`;
 
         // Notificar o criador do planejamento (se não for ele mesmo comentando)
         if (criador_id !== parseInt(usuario_id)) {
@@ -2970,7 +3638,7 @@ app.delete("/comentarios/:id", authenticateToken, async (req, res) => {
 
     // Buscar informações antes de deletar para criar notificações
     const comentarioInfo = await db.query(
-      `SELECT pc.planejamento_id, pc.texto_comentario, p.ano, p.mes, p.semana, 
+      `SELECT pc.planejamento_id, pc.texto_comentario, p.ano, p.mes, 
               p.usuario_id as criador_id, u.nome as deletador_nome
        FROM planejamento_comentarios pc
        JOIN planejamentos p ON pc.planejamento_id = p.id_planejamento
@@ -2993,9 +3661,9 @@ app.delete("/comentarios/:id", authenticateToken, async (req, res) => {
 
     // Criar notificações sobre a exclusão do comentário
     if (comentarioInfo.rows.length > 0) {
-      const { planejamento_id, ano, mes, semana, criador_id, deletador_nome } =
+      const { planejamento_id, ano, mes, criador_id, deletador_nome } =
         comentarioInfo.rows[0];
-      const descricao = `Planejamento ${mes}/${ano} - Semana ${semana}`;
+      const descricao = `Planejamento ${mes}/${ano}`;
 
       // Notificar o criador do planejamento (se não for ele mesmo deletando)
       if (criador_id !== req.user.userId) {
@@ -3149,6 +3817,81 @@ app.get(
 );
 
 /**
+ * Rota para buscar todos os meses de um ano
+ * GET /planejamentos/meses/:ano
+ * Retorna os 12 meses do ano com informações de planejamentos
+ */
+app.get("/planejamentos/meses/:ano", authenticateToken, async (req, res) => {
+  const { ano } = req.params;
+  const { turma_id } = req.query;
+
+  console.log(`\n📅 [Meses] Buscando meses para o ano ${ano}`);
+  console.log(`🏫 [Meses] Turma ID: ${turma_id || "Não especificada"}`);
+
+  try {
+    const anoInt = parseInt(ano);
+
+    if (isNaN(anoInt)) {
+      return res.status(400).json({ error: "Ano inválido" });
+    }
+
+    // Gera array com os 12 meses
+    const meses = Array.from({ length: 12 }, (_, i) => ({
+      ano: anoInt,
+      mes: i + 1,
+      nomeMes: getNomeMes(i + 1),
+    }));
+
+    console.log(`📊 [Meses] Gerados ${meses.length} meses`);
+
+    // Se turma_id foi fornecida, busca planejamentos existentes
+    let planejamentos = [];
+    if (turma_id) {
+      const planejamentosQuery = await pool.query(
+        `SELECT 
+            id_planejamento,
+            turma_id,
+            ano,
+            mes,
+            status,
+            data_criacao,
+            usuario_id
+          FROM planejamentos 
+          WHERE turma_id = $1 
+          AND ano = $2
+          ORDER BY mes`,
+        [turma_id, anoInt]
+      );
+
+      planejamentos = planejamentosQuery.rows;
+      console.log(
+        `📋 [Meses] Encontrados ${planejamentos.length} planejamentos existentes`
+      );
+    }
+
+    // Mapeia os meses com os planejamentos
+    const resultado = meses.map((mesInfo) => {
+      const planejamento = planejamentos.find(
+        (p) => p.mes === mesInfo.mes && p.ano === mesInfo.ano
+      );
+
+      return {
+        ...mesInfo,
+        planejamento: planejamento || null,
+      };
+    });
+
+    console.log(
+      `✅ [Meses] Retornando ${resultado.length} meses com informações completas\n`
+    );
+    res.json(resultado);
+  } catch (err) {
+    console.error("❌ [Meses] Erro ao buscar meses:", err);
+    res.status(500).json({ error: "Erro ao buscar meses do ano" });
+  }
+});
+
+/**
  * Rota para buscar informações de uma semana ISO específica
  * GET /planejamentos/semana-iso/:ano/:semana
  */
@@ -3270,6 +4013,45 @@ app.post("/planejamentos/semana-iso", authenticateToken, async (req, res) => {
     console.log(
       `✅ Criado/Atualizado (upsert), ID: ${createdRow.id_planejamento}`
     );
+
+    // Criar notificação para administradores sobre novo planejamento
+    try {
+      console.log(
+        "📬 [PLANEJAMENTO] Criando notificação para administradores..."
+      );
+      const admins = await pool.query(
+        `SELECT id FROM usuarios WHERE cargo ILIKE '%admin%'`
+      );
+      const turmaInfo = await pool.query(
+        `SELECT nome_turma FROM turmas WHERE id = $1`,
+        [turma_id]
+      );
+      const nomeTurma = turmaInfo.rows[0]?.nome_turma || `Turma #${turma_id}`;
+
+      if (admins.rows.length > 0) {
+        console.log(
+          `📬 [PLANEJAMENTO] Encontrados ${admins.rows.length} administradores`
+        );
+        for (const admin of admins.rows) {
+          await pool.query(
+            `INSERT INTO notificacoes (usuario_id, tipo, mensagem, planejamento_id, lida, created_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [
+              admin.id,
+              "planejamento",
+              `Novo planejamento criado: ${nomeTurma} - Semana ${semanaInt}/${anoInt}`,
+              createdRow.id_planejamento,
+              false,
+            ]
+          );
+        }
+        console.log("✅ [PLANEJAMENTO] Notificações criadas com sucesso!");
+      }
+    } catch (notifError) {
+      console.error("⚠️ [PLANEJAMENTO] Erro ao criar notificação:", notifError);
+      // Não bloqueia a criação do planejamento
+    }
+
     // 201 se recém-criado; 200 se conflitou e atualizou. Não diferenciamos aqui; opcional.
     return res.status(201).json({ ...createdRow, info_semana: infoSemana });
   } catch (err) {
@@ -3287,8 +4069,8 @@ app.post("/planejamentos/semana-iso", authenticateToken, async (req, res) => {
         );
         const semanaDoMes = idx >= 0 ? idx + 1 : 1;
         const sel = await pool.query(
-          `SELECT * FROM planejamentos WHERE turma_id=$1 AND ano=$2 AND mes=$3 AND semana=$4 LIMIT 1`,
-          [req.body.turma_id, anoInt, mesReferencia, semanaDoMes]
+          `SELECT * FROM planejamentos WHERE turma_id=$1 AND ano=$2 AND mes=$3 LIMIT 1`,
+          [req.body.turma_id, anoInt, mesReferencia]
         );
         if (sel.rowCount > 0) {
           console.log(
@@ -3309,6 +4091,144 @@ app.post("/planejamentos/semana-iso", authenticateToken, async (req, res) => {
 // ========================================
 // FIM DAS ROTAS DE SEMANAS ISO
 // ========================================
+
+/**
+ * Rota para criar planejamento mensal
+ * POST /planejamentos/mensal
+ */
+app.post("/planejamentos/mensal", authenticateToken, async (req, res) => {
+  const { turma_id, ano, mes } = req.body;
+
+  console.log(
+    `\n📝 [Criar Planejamento Mensal] Turma ${turma_id}, Mês ${mes}/${ano}`
+  );
+
+  try {
+    if (!turma_id || !ano || !mes) {
+      return res.status(400).json({
+        error: "turma_id, ano e mes são obrigatórios",
+      });
+    }
+
+    const anoInt = parseInt(ano);
+    const mesInt = parseInt(mes);
+
+    if (isNaN(anoInt) || isNaN(mesInt) || mesInt < 1 || mesInt > 12) {
+      return res.status(400).json({ error: "Ano ou mês inválido" });
+    }
+
+    // Verifica se já existe
+    const byMonthly = await pool.query(
+      `SELECT * FROM planejamentos
+       WHERE turma_id = $1 AND ano = $2 AND mes = $3
+       LIMIT 1`,
+      [turma_id, anoInt, mesInt]
+    );
+
+    if (byMonthly.rowCount > 0) {
+      const row = byMonthly.rows[0];
+      console.log(
+        `↩️ Já existia planejamento mensal, ID: ${row.id_planejamento}`
+      );
+      return res.status(200).json({ ...row, created: false });
+    }
+
+    // Cria novo planejamento mensal
+    const insert = await pool.query(
+      `INSERT INTO planejamentos (
+         turma_id, ano, mes, status, usuario_id
+       ) VALUES ($1,$2,$3,'Pendente',$4)
+       RETURNING *`,
+      [turma_id, anoInt, mesInt, req.user.userId]
+    );
+
+    const createdRow = insert.rows[0];
+    console.log(
+      `✅ Planejamento mensal criado, ID: ${createdRow.id_planejamento}`
+    );
+
+    // Criar notificação para administradores sobre novo planejamento mensal
+    try {
+      console.log(
+        "📬 [PLANEJAMENTO MENSAL] Criando notificação para administradores..."
+      );
+      const admins = await pool.query(
+        `SELECT id FROM usuarios WHERE cargo ILIKE '%admin%'`
+      );
+      const turmaInfo = await pool.query(
+        `SELECT nome_turma FROM turmas WHERE id = $1`,
+        [turma_id]
+      );
+      const nomeTurma = turmaInfo.rows[0]?.nome_turma || `Turma #${turma_id}`;
+      const mesesNomes = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+      ];
+      const nomeMes = mesesNomes[mesInt - 1] || `Mês ${mesInt}`;
+
+      if (admins.rows.length > 0) {
+        console.log(
+          `📬 [PLANEJAMENTO MENSAL] Encontrados ${admins.rows.length} administradores`
+        );
+        for (const admin of admins.rows) {
+          await pool.query(
+            `INSERT INTO notificacoes (usuario_id, tipo, mensagem, planejamento_id, lida, created_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [
+              admin.id,
+              "planejamento",
+              `Novo planejamento mensal criado: ${nomeTurma} - ${nomeMes}/${anoInt}`,
+              createdRow.id_planejamento,
+              false,
+            ]
+          );
+        }
+        console.log(
+          "✅ [PLANEJAMENTO MENSAL] Notificações criadas com sucesso!"
+        );
+      }
+    } catch (notifError) {
+      console.error(
+        "⚠️ [PLANEJAMENTO MENSAL] Erro ao criar notificação:",
+        notifError
+      );
+      // Não bloqueia a criação do planejamento
+    }
+
+    return res.status(201).json({ ...createdRow, created: true });
+  } catch (err) {
+    console.error("❌ [Criar Planejamento Mensal] Erro:", err);
+
+    if (err && err.code === "23505") {
+      // Conflito, busca o existente
+      try {
+        const sel = await pool.query(
+          `SELECT * FROM planejamentos WHERE turma_id=$1 AND ano=$2 AND mes=$3 LIMIT 1`,
+          [req.body.turma_id, parseInt(req.body.ano), parseInt(req.body.mes)]
+        );
+        if (sel.rowCount > 0) {
+          console.log(
+            `↩️ Conflito resolvido, existente ID: ${sel.rows[0].id_planejamento}`
+          );
+          return res.status(200).json({ ...sel.rows[0], created: false });
+        }
+      } catch (inner) {
+        console.error("Falha no fallback 23505:", inner);
+      }
+    }
+    res.status(500).json({ error: "Erro ao criar planejamento mensal" });
+  }
+});
 
 // --- ROTAS PARA ANEXOS DE PLANEJAMENTO ---
 
@@ -3360,7 +4280,7 @@ app.post(
 
       // Buscar informações do planejamento e criar notificações
       const planejamentoInfo = await db.query(
-        `SELECT p.ano, p.mes, p.semana, p.usuario_id as criador_id, u.nome as uploader_nome
+        `SELECT p.ano, p.mes, p.usuario_id as criador_id, u.nome as uploader_nome
          FROM planejamentos p
          JOIN usuarios u ON u.id = $2
          WHERE p.id_planejamento = $1`,
@@ -3368,9 +4288,9 @@ app.post(
       );
 
       if (planejamentoInfo.rows.length > 0) {
-        const { ano, mes, semana, criador_id, uploader_nome } =
+        const { ano, mes, criador_id, uploader_nome } =
           planejamentoInfo.rows[0];
-        const descricao = `Planejamento ${mes}/${ano} - Semana ${semana}`;
+        const descricao = `Planejamento ${mes}/${ano}`;
 
         // Notificar o criador do planejamento (se não for ele mesmo fazendo upload)
         if (criador_id !== req.user.userId) {
@@ -3437,7 +4357,7 @@ app.delete("/anexos/:id", authenticateToken, async (req, res) => {
     // 1. Primeiro, busca o registro no banco para saber o caminho do arquivo e informações do planejamento
     const findResult = await db.query(
       `SELECT pa.path_arquivo, pa.nome_arquivo, pa.planejamento_id,
-              p.ano, p.mes, p.semana, p.usuario_id as criador_id,
+              p.ano, p.mes, p.usuario_id as criador_id,
               u.nome as deletador_nome
        FROM planejamento_anexos pa
        JOIN planejamentos p ON pa.planejamento_id = p.id_planejamento
@@ -3456,7 +4376,6 @@ app.delete("/anexos/:id", authenticateToken, async (req, res) => {
       planejamento_id,
       ano,
       mes,
-      semana,
       criador_id,
       deletador_nome,
     } = findResult.rows[0];
@@ -3475,7 +4394,7 @@ app.delete("/anexos/:id", authenticateToken, async (req, res) => {
     });
 
     // 4. Criar notificações sobre a exclusão do anexo
-    const descricao = `Planejamento ${mes}/${ano} - Semana ${semana}`;
+    const descricao = `Planejamento ${mes}/${ano}`;
 
     // Notificar o criador do planejamento (se não for ele mesmo deletando)
     if (criador_id !== req.user.userId) {
@@ -3567,7 +4486,7 @@ app.delete(
 
       // Deleta o planejamento em si
       const delPlan = await client.query(
-        "DELETE FROM planejamentos WHERE id_planejamento = $1 RETURNING turma_id, ano, mes, semana",
+        "DELETE FROM planejamentos WHERE id_planejamento = $1 RETURNING turma_id, ano, mes",
         [id]
       );
 
@@ -3809,6 +4728,12 @@ app.post(
       `;
 
       const result = await db.query(updateQuery, [imageUrl, userId]);
+
+      console.log("[upload-profile-photo] Foto salva no banco:", {
+        userId: userId,
+        imageUrl: imageUrl,
+        savedData: result.rows[0],
+      });
 
       // 3. Remove a foto antiga do sistema de arquivos (se existir)
       if (currentPhoto) {
@@ -4782,11 +5707,14 @@ app.get("/notificacoes", authenticateToken, async (req, res) => {
 
     const result = await db.query(
       `SELECT 
-        n.*,
-        CONCAT('Planejamento ', p.mes, '/', p.ano, ' - Semana ', p.semana) as planejamento_titulo,
-        p.turma_id
+        n.id,
+        n.usuario_id,
+        n.tipo,
+        n.mensagem,
+        n.planejamento_id,
+        n.lida,
+        n.created_at
       FROM notificacoes n
-      LEFT JOIN planejamentos p ON n.planejamento_id = p.id_planejamento
       WHERE n.usuario_id = $1
       ORDER BY n.created_at DESC
       LIMIT 50`,

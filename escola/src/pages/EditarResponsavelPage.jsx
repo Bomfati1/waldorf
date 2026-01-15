@@ -118,6 +118,11 @@ const EditarResponsavelPage = () => {
     outro_telefone: "",
     cpf: "",
     rg: "",
+    cidade: "",
+    bairro: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,6 +160,11 @@ const EditarResponsavelPage = () => {
           outro_telefone: data.outro_telefone || "",
           cpf: data.cpf || "",
           rg: data.rg || "",
+          cidade: data.cidade || "",
+          bairro: data.bairro || "",
+          logradouro: data.logradouro || "",
+          numero: data.numero || "",
+          complemento: data.complemento || "",
         });
       } catch (err) {
         setError(err.message);
@@ -291,6 +301,68 @@ const EditarResponsavelPage = () => {
               onChange={handleChange}
             />
           </div>
+
+          {/* Seção de Endereço */}
+          <div
+            className="form-group full-width"
+            style={{ marginTop: "2rem", marginBottom: "1rem" }}
+          >
+            <h3 style={{ margin: 0, color: "#555", fontSize: "1.2rem" }}>
+              📍 Endereço (Opcional)
+            </h3>
+          </div>
+
+          <div className="form-group">
+            <InputWithHint
+              label="Cidade"
+              hint="Cidade onde o responsável reside"
+              type="text"
+              name="cidade"
+              value={responsavelData.cidade}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="form-group">
+            <InputWithHint
+              label="Bairro"
+              hint="Bairro do endereço"
+              type="text"
+              name="bairro"
+              value={responsavelData.bairro}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="form-group">
+            <InputWithHint
+              label="Logradouro"
+              hint="Nome completo do logradouro (Ex: Rua das Flores, Avenida Brasil)"
+              type="text"
+              name="logradouro"
+              value={responsavelData.logradouro}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="form-group">
+            <InputWithHint
+              label="Número"
+              hint="Número do imóvel"
+              type="text"
+              name="numero"
+              value={responsavelData.numero}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="form-group">
+            <InputWithHint
+              label="Complemento"
+              hint="Complemento do endereço (Apt, Bloco, Casa, etc.)"
+              type="text"
+              name="complemento"
+              value={responsavelData.complemento}
+              onChange={handleChange}
+            />
+          </div>
+
           <div className="form-actions">
             <button
               type="button"

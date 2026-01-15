@@ -3,6 +3,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import DashboardLayout from "./components/DashboardLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import AlunosPage from "./pages/AlunosPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import DashboardHomePage from "./pages/DashboardHomePage";
@@ -14,9 +15,11 @@ import PlanejamentosISOPage from "./pages/PlanejamentosISOPage";
 import ResponsaveisPage from "./pages/ResponsaveisPage";
 import CadastrarAlunoPage from "./pages/CadastrarAlunoPage";
 import CadastrarTurmaPage from "./pages/CadastrarTurmaPage";
+import CadastrarResponsavelPage from "./pages/CadastrarResponsavelPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import PerfilPage from "./pages/PerfilPage";
 import EditarResponsavelPage from "./pages/EditarResponsavelPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 function App() {
   console.log(
@@ -30,7 +33,14 @@ function App() {
       <Route path="/" element={<Login />} />
 
       {/* Rota para o Dashboard, que usa o DashboardLayout */}
-      <Route path="/home" element={<DashboardLayout />}>
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<DashboardHomePage />} />
         <Route path="alunos" element={<AlunosPage />} />
         <Route path="planejamentos" element={<PlanejamentosPage />} />
@@ -44,6 +54,10 @@ function App() {
         <Route path="pre-matricula" element={<PreMatriculaPage />} />
         <Route path="cadastrar-aluno" element={<CadastrarAlunoPage />} />
         <Route path="cadastrar-turma" element={<CadastrarTurmaPage />} />
+        <Route
+          path="cadastrar-responsavel"
+          element={<CadastrarResponsavelPage />}
+        />
         <Route path="relatorios" element={<RelatoriosPage />} />
         <Route path="perfil" element={<PerfilPage />} />
         <Route path="configuracoes" element={<ConfiguracoesPage />} />
@@ -52,6 +66,9 @@ function App() {
           element={<InteressadosDashboardPage />}
         />
       </Route>
+
+      {/* Rota catch-all para 404 */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

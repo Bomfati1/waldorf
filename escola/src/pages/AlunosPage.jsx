@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useModal } from "../context/ModalContext";
 import EditAlunoModal from "../components/EditAlunoModal";
+import ModalBase from "../components/ModalBase";
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import "../css/AlunosPage.css";
 
-// O componente AssignTurmaModal também permanece o mesmo.
 const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
-  // Bloqueia o scroll do body enquanto o modal está aberto
-  useBodyScrollLock(true);
+  const { openModal, closeModal, getZIndex } = useModal();
+  const modalId = `assign-turma-modal-${aluno.id}`;
 
   const [turmas, setTurmas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTurma, setSelectedTurma] = useState("");
+
+  useEffect(() => {
+    openModal(modalId);
+    return () => closeModal(modalId);
+  }, []);
 
   useEffect(() => {
     const fetchTurmas = async () => {
@@ -26,7 +31,6 @@ const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
         setTurmas(data);
       } catch (error) {
         console.error(error);
-        // Substituindo alert por uma mensagem mais amigável
       } finally {
         setLoading(false);
       }
@@ -40,56 +44,102 @@ const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Matricular Aluno em Turma</h2>
-          <button className="modal-close-button" onClick={onClose}>
-            &times;
+    <ModalBase
+      isOpen={true}
+      onClose={onClose}
+      title="Matricular Aluno em Turma"
+      size="medium"
+      zIndex={getZIndex(modalId)}
+    >
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+      >
+        <p>
+          Selecione a turma para matricular{" "}
+          <strong>{aluno.nome_completo}</strong>:
+        </p>
+        <div>
+          <label
+            htmlFor="turma-select"
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "500",
+            }}
+          >
+            Turmas Disponíveis
+          </label>
+          <select
+            id="turma-select"
+            value={selectedTurma}
+            onChange={(e) => setSelectedTurma(e.target.value)}
+            required
+            style={{
+              width: "100%",
+              padding: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "6px",
+              fontSize: "14px",
+            }}
+          >
+            <option value="" disabled>
+              Selecione uma turma...
+            </option>
+            {loading ? (
+              <option disabled>Carregando turmas...</option>
+            ) : (
+              turmas.map((turma) => (
+                <option key={turma.id} value={turma.id}>
+                  {turma.nome_turma} ({turma.periodo})
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "0.5rem",
+            marginTop: "1rem",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "500",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!selectedTurma || loading}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: !selectedTurma || loading ? "#ccc" : "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: !selectedTurma || loading ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "500",
+            }}
+          >
+            Matricular e Ativar
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="aluno-form">
-          <p>
-            Selecione a turma para matricular{" "}
-            <strong>{aluno.nome_completo}</strong>:
-          </p>
-          <div className="form-group">
-            <label htmlFor="turma-select">Turmas Disponíveis</label>
-            <select
-              id="turma-select"
-              value={selectedTurma}
-              onChange={(e) => setSelectedTurma(e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                Selecione uma turma...
-              </option>
-              {loading ? (
-                <option disabled>Carregando turmas...</option>
-              ) : (
-                turmas.map((turma) => (
-                  <option key={turma.id} value={turma.id}>
-                    {turma.nome_turma} ({turma.periodo})
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-          <div
-            className="modal-actions"
-            style={{ textAlign: "right", marginTop: "1rem" }}
-          >
-            <button
-              type="submit"
-              className="submit-button"
-              disabled={!selectedTurma || loading}
-            >
-              Matricular e Ativar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalBase>
   );
 };
 
@@ -335,7 +385,7 @@ const AlunosPage = () => {
         </div>
         <div className="filter-item">
           <SelectWithHint
-            label="Situação Financeira"
+            label="Status Financeiro"
             hint="Filtre por alunos que pagam valor integral ou possuem bolsa"
             name="pagamento"
             value={filters.pagamento}
@@ -380,6 +430,7 @@ const AlunosPage = () => {
                   <th>Nome Completo</th>
                   <th>Nascimento</th>
                   <th>Pagamento</th>
+                  <th>Turma Atual</th>
                   <th>Status</th>
                   <th>Ações</th>
                 </tr>
@@ -406,6 +457,7 @@ const AlunosPage = () => {
                       <td>{aluno.nome_completo}</td>
                       <td>{formatDate(aluno.data_nascimento)}</td>
                       <td>{aluno.status_pagamento}</td>
+                      <td>{aluno.nome_turma || "Sem turma"}</td>
                       <td>
                         <span
                           className={`status-badge status-${

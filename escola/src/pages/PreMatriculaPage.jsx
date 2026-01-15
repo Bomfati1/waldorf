@@ -1,10 +1,8 @@
 // src/pages/PreMatriculaPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import InteressadosDashboardPage from "./InteressadosDashboardPage"; // Importa o componente do dashboard
-import ImportDropdown from "../components/ImportDropdown";
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
-import "../css/ImportDropdown.css";
 import "../css/PreMatriculaPage.css";
 
 const statusOptions = [
@@ -86,6 +84,16 @@ const PreMatriculaPage = () => {
   const [editingRowId, setEditingRowId] = useState(null);
   const [editedData, setEditedData] = useState({});
 
+  // Estados para adicionar novo interessado
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [newInteressado, setNewInteressado] = useState({
+    nome: "",
+    telefone: "",
+    como_conheceu: "Google",
+    data_contato: new Date().toISOString().slice(0, 10),
+    status: "Entrou Em Contato",
+  });
+
   // Busca os dados dos interessados do backend
   const fetchInteressados = useCallback(async () => {
     setLoading(true);
@@ -98,16 +106,7 @@ const PreMatriculaPage = () => {
         throw new Error("Falha ao buscar os dados dos interessados.");
       }
       const data = await response.json();
-      // Garante que 'intencao' seja sempre um booleano para consistência no frontend
-      const processedData = data.map((item) => ({
-        ...item,
-        intencao:
-          typeof item.intencao === "string"
-            ? item.intencao.toLowerCase() === "sim" ||
-              item.intencao.toLowerCase() === "true"
-            : !!item.intencao, // Converte qualquer valor truthy/falsy para booleano
-      }));
-      setPreMatriculas(processedData);
+      setPreMatriculas(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -168,12 +167,9 @@ const PreMatriculaPage = () => {
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    // Converte o valor para booleano se o campo for 'intencao'
-    const finalValue = name === "intencao" ? value === "true" : value;
-
     setEditedData((prevData) => ({
       ...prevData,
-      [name]: finalValue,
+      [name]: value,
     }));
   };
 
@@ -197,11 +193,6 @@ const PreMatriculaPage = () => {
         dataToSave.data_contato = null;
       }
 
-      // Converte o valor booleano de 'intencao' para 'sim' ou 'nao' antes de enviar ao backend
-      if (typeof dataToSave.intencao === "boolean") {
-        dataToSave.intencao = dataToSave.intencao ? "sim" : "nao";
-      }
-
       // Adiciona um log para depuração. Verifique o console do navegador (F12).
       console.log("Enviando para o backend:", dataToSave);
 
@@ -220,13 +211,6 @@ const PreMatriculaPage = () => {
 
       const savedData = await response.json();
       console.log("Dados recebidos do backend após salvar:", savedData);
-
-      // O frontend trabalha com booleanos para 'intencao' para facilitar a lógica.
-      // Se o backend retornar 'sim'/'nao', convertemos de volta para booleano
-      // para manter a consistência do estado local.
-      if (typeof savedData.intencao === "string") {
-        savedData.intencao = savedData.intencao.toLowerCase() === "sim";
-      }
 
       // Atualiza o estado local com os dados retornados pelo servidor para garantir consistência
       setPreMatriculas((current) =>
@@ -327,6 +311,77 @@ const PreMatriculaPage = () => {
     }
   };
 
+  // Funções para adicionar novo interessado
+  const handleAddNewClick = () => {
+    setIsAddingNew(true);
+    setEditingRowId(null); // Cancela qualquer edição em andamento
+    setEditedData({});
+  };
+
+  const handleCancelNewClick = () => {
+    setIsAddingNew(false);
+    setNewInteressado({
+      nome: "",
+      telefone: "",
+      como_conheceu: "Google",
+      data_contato: new Date().toISOString().slice(0, 10),
+      status: "Entrou Em Contato",
+    });
+  };
+
+  const handleNewInteressadoChange = (e) => {
+    const { name, value } = e.target;
+    setNewInteressado((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSaveNewClick = async () => {
+    if (!newInteressado.nome.trim() || !newInteressado.telefone.trim()) {
+      alert("Nome e telefone são obrigatórios.");
+      return;
+    }
+
+    try {
+      const dataToSave = { ...newInteressado };
+
+      // Formata a data para ISO string completo
+      if (dataToSave.data_contato) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dataToSave.data_contato)) {
+          dataToSave.data_contato = `${dataToSave.data_contato}T00:00:00.000Z`;
+        }
+      } else {
+        dataToSave.data_contato = new Date().toISOString();
+      }
+
+      const response = await fetch("http://localhost:3001/interessados", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(dataToSave),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Falha ao criar interessado.");
+      }
+
+      const savedData = await response.json();
+
+      // Adiciona o novo interessado no início da lista
+      setPreMatriculas((current) => [savedData, ...current]);
+      
+      // Reseta o formulário
+      handleCancelNewClick();
+      
+      alert("Interessado adicionado com sucesso!");
+    } catch (err) {
+      console.error("Erro ao criar interessado:", err);
+      alert(`Não foi possível criar o interessado: ${err.message}`);
+    }
+  };
+
   return (
     <div
       style={{
@@ -361,67 +416,6 @@ const PreMatriculaPage = () => {
 
       {activeView === "list" && (
         <>
-          {/* Menu Suspenso de Importação */}
-          <ImportDropdown
-            buttonText="Importar via Excel"
-            buttonIcon="📊"
-            options={[
-              {
-                icon: "👥",
-                title: "Importar Interessados",
-                endpoint: "/interessados/upload-excel",
-                acceptedColumns: [
-                  {
-                    name: "Nome",
-                    description: "Nome completo do interessado",
-                    required: true,
-                  },
-                  {
-                    name: "Email",
-                    description: "Endereço de email do interessado",
-                    required: true,
-                  },
-                  {
-                    name: "Telefone",
-                    description: "Número de telefone do interessado",
-                    required: true,
-                  },
-                  {
-                    name: "Data",
-                    description: "Data de interesse (formato: YYYY-MM-DD)",
-                    required: false,
-                  },
-                  {
-                    name: "Status",
-                    description:
-                      "Status do interessado (Entrou Em Contato, Conversando, Negociando, Visita Agendada, Ganho, Perdido)",
-                    required: false,
-                  },
-                  {
-                    name: "Intenção",
-                    description: "Intenção de matrícula (sim/nao)",
-                    required: false,
-                  },
-                  {
-                    name: "Observações",
-                    description: "Observações adicionais (opcional)",
-                    required: false,
-                  },
-                ],
-                description:
-                  "Faça upload de um arquivo Excel (.xlsx ou .xls) para importar múltiplos interessados de uma vez. O sistema criará automaticamente novos registros na base de dados.",
-                buttonText: "Importar Interessados",
-                onSuccess: (data) => {
-                  // Recarregar a lista de interessados após importação bem-sucedida
-                  fetchInteressados();
-                },
-                onError: (data) => {
-                  console.error("Erro na importação:", data);
-                },
-              },
-            ]}
-          />
-
           {/* Seção de Filtros */}
           <div
             style={{
@@ -492,7 +486,26 @@ const PreMatriculaPage = () => {
           {error && <p style={{ color: "red" }}>Erro: {error}</p>}
 
           {!loading && !error && (
-            <div style={{ overflowX: "auto" }}>
+            <>
+              <div style={{ marginBottom: "1rem", textAlign: "right" }}>
+                <button
+                  onClick={handleAddNewClick}
+                  disabled={isAddingNew}
+                  style={{
+                    padding: "10px 20px",
+                    backgroundColor: isAddingNew ? "#6c757d" : "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: isAddingNew ? "not-allowed" : "pointer",
+                    fontSize: "16px",
+                    fontWeight: "500",
+                  }}
+                >
+                  ➕ Adicionar Novo Interessado
+                </button>
+              </div>
+              <div style={{ overflowX: "auto" }}>
               <table
                 style={{
                   width: "100%",
@@ -540,16 +553,6 @@ const PreMatriculaPage = () => {
                         fontWeight: "normal",
                       }}
                     >
-                      Intenção
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal",
-                      }}
-                    >
                       Data Contato
                     </th>
                     <th
@@ -575,6 +578,91 @@ const PreMatriculaPage = () => {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Linha para adicionar novo interessado */}
+                  {isAddingNew && (
+                    <tr style={{ borderBottom: "2px solid #28a745", backgroundColor: "#f0fff4" }}>
+                      <td style={{ padding: "12px" }}>
+                        <input
+                          type="text"
+                          name="nome"
+                          placeholder="Nome completo *"
+                          value={newInteressado.nome}
+                          onChange={handleNewInteressadoChange}
+                          style={inputStyle}
+                          autoFocus
+                        />
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <input
+                          type="text"
+                          name="telefone"
+                          placeholder="(00) 00000-0000 *"
+                          value={newInteressado.telefone}
+                          onChange={handleNewInteressadoChange}
+                          style={inputStyle}
+                        />
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <select
+                          name="como_conheceu"
+                          value={newInteressado.como_conheceu}
+                          onChange={handleNewInteressadoChange}
+                          style={inputStyle}
+                        >
+                          {comoConheceuOptions.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <input
+                          type="date"
+                          name="data_contato"
+                          value={newInteressado.data_contato}
+                          onChange={handleNewInteressadoChange}
+                          style={inputStyle}
+                        />
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <select
+                          name="status"
+                          value={newInteressado.status}
+                          onChange={handleNewInteressadoChange}
+                          style={getStatusSelectStyles(newInteressado.status)}
+                        >
+                          {statusOptions.map((option) => (
+                            <option
+                              key={option}
+                              value={option}
+                              style={{
+                                color: "black",
+                                backgroundColor: "white",
+                              }}
+                            >
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+                        <button
+                          onClick={handleSaveNewClick}
+                          style={saveButtonStyle}
+                        >
+                          Salvar
+                        </button>
+                        <button
+                          onClick={handleCancelNewClick}
+                          style={cancelButtonStyle}
+                        >
+                          Cancelar
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  
                   {filteredMatriculas.map((matricula) =>
                     editingRowId === matricula.id ? (
                       // Linha em modo de edição
@@ -621,17 +709,6 @@ const PreMatriculaPage = () => {
                                 {option}
                               </option>
                             ))}
-                          </select>
-                        </td>
-                        <td style={{ padding: "12px" }}>
-                          <select
-                            name="intencao"
-                            value={editedData.intencao}
-                            onChange={handleEditChange}
-                            style={inputStyle}
-                          >
-                            <option value="true">Sim</option>
-                            <option value="false">Não</option>
                           </select>
                         </td>
                         <td style={{ padding: "12px" }}>
@@ -699,9 +776,6 @@ const PreMatriculaPage = () => {
                           {matricula.como_conheceu}
                         </td>
                         <td style={{ padding: "12px" }}>
-                          {matricula.intencao ? "Sim" : "Não"}
-                        </td>
-                        <td style={{ padding: "12px" }}>
                           {formatDate(matricula.data_contato)}
                         </td>
                         <td style={{ padding: "12px" }}>
@@ -740,6 +814,7 @@ const PreMatriculaPage = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </>
       )}

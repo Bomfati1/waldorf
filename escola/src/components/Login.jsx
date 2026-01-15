@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaUser, FaLock } from "react-icons/fa";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Importar o hook useAuth
 import "../css/Login.css";
 import "../css/App.css";
@@ -12,9 +12,14 @@ const Login = () => {
   // Novo estado para armazenar e exibir mensagens de erro
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const { login } = useAuth(); // Obter a função de login do contexto
+  const { login, user } = useAuth(); // Obter a função de login e o usuário do contexto
 
   const navigate = useNavigate();
+
+  // Se já está logado, redireciona para o dashboard
+  if (user) {
+    return <Navigate to="/home" replace />;
+  }
 
   // Efeito para verificar se o usuário já está logado via cookie
   useEffect(() => {
@@ -28,7 +33,7 @@ const Login = () => {
           const userData = await response.json();
           // Usuário já está logado, redirecionar para o dashboard
           login(userData);
-          navigate("/home");
+          navigate("/home", { replace: true });
         }
       } catch (error) {
         // Usuário não está logado, continuar na página de login

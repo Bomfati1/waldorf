@@ -9,7 +9,7 @@ const CadastrarTurmaPage = () => {
   const [nomeTurma, setNomeTurma] = useState("");
   const [anoLetivo, setAnoLetivo] = useState(new Date().getFullYear());
   const [periodo, setPeriodo] = useState("Manhã");
-  const [nivel, setNivel] = useState("1"); // 1 para Maternal, 0 para Jardim
+  const [nivel, setNivel] = useState("jardim"); // jardim, maternal ou fundamental
   const [professores, setProfessores] = useState([]);
   const [professoresSelecionados, setProfessoresSelecionados] = useState([]);
 
@@ -73,7 +73,7 @@ const CadastrarTurmaPage = () => {
       nome_turma: nomeTurma,
       ano_letivo: anoLetivo,
       periodo: periodo.toLowerCase(),
-      nivel: Number(nivel),
+      nivel: nivel,
       professoresIds: professoresSelecionados,
     };
 
@@ -158,13 +158,14 @@ const CadastrarTurmaPage = () => {
             <div className="form-group">
               <SelectWithHint
                 label="Nível"
-                hint="Escolha o nível de ensino da turma: Maternal (1-3 anos) ou Jardim (4-6 anos)"
+                hint="Escolha o nível de ensino da turma: Jardim (4-6 anos), Maternal (1-3 anos) ou Fundamental (6+ anos)"
                 value={nivel}
                 onChange={(e) => setNivel(e.target.value)}
                 required
               >
-                <option value="1">👶 Maternal</option>
-                <option value="0">🌱 Jardim</option>
+                <option value="jardim">🌱 Jardim</option>
+                <option value="maternal">👶 Maternal</option>
+                <option value="fundamental">📚 Fundamental</option>
               </SelectWithHint>
             </div>
           </div>

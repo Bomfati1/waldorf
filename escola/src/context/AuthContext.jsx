@@ -24,6 +24,10 @@ export const AuthProvider = ({ children }) => {
 
         if (response.ok) {
           const userData = await response.json();
+          console.log(
+            "[AuthContext] Dados do usuário carregados do backend:",
+            userData
+          );
           // Atualiza os dados do usuário com informações do backend
           setUser(userData);
           localStorage.setItem("userInfo", JSON.stringify(userData));
@@ -62,7 +66,12 @@ export const AuthProvider = ({ children }) => {
     } finally {
       // Sempre limpa o estado local
       localStorage.removeItem("userInfo");
+      sessionStorage.clear(); // Limpa todo sessionStorage
       setUser(null);
+
+      // Substitui a entrada atual do histórico pela página de login
+      // Isso impede que o botão voltar retorne para páginas autenticadas
+      window.location.replace("/");
     }
   };
 

@@ -142,8 +142,17 @@ const Notificacoes = () => {
       marcarComoLida(notificacao.id);
     }
 
-    // Navegar para o planejamento se houver ID
-    if (notificacao.planejamento_id) {
+    // Navegar baseado no tipo de notificação
+    if (notificacao.tipo === "prematricula") {
+      setAberto(false);
+      navigate("/home/pre-matricula");
+    } else if (
+      notificacao.tipo === "planejamento" &&
+      notificacao.planejamento_id
+    ) {
+      setAberto(false);
+      navigate("/home/planejamentos-iso");
+    } else if (notificacao.planejamento_id) {
       setAberto(false);
       navigate("/home/planejamentos");
     }
@@ -183,6 +192,8 @@ const Notificacoes = () => {
         return "❌";
       case "planejamento":
         return "📋";
+      case "prematricula":
+        return "🎓";
       default:
         return "🔔";
     }

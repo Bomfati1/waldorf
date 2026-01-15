@@ -11,6 +11,7 @@ import {
   FaFileAlt,
   FaCalendarCheck,
   FaCog,
+  FaUserTie,
 } from "react-icons/fa";
 import "../css/DashboardHomePage.css";
 
@@ -61,6 +62,12 @@ const HomePage = () => {
       label: "Cadastrar Turma",
       description: "Criar novas turmas",
     },
+    {
+      path: "cadastrar-responsavel",
+      icon: <FaUserTie />,
+      label: "Cadastrar Responsável",
+      description: "Cadastrar novos responsáveis",
+    },
     //{ path: "relatorios", icon: <FaFileAlt />, label: "Relatórios", description: "Visualizar relatórios do sistema" },
     {
       path: "configuracoes",
@@ -77,9 +84,11 @@ const HomePage = () => {
     // Rotas que professores NÃO devem ver
     const restrictedForProfessor = [
       "alunos",
+      "responsaveis",
       "pre-matricula",
       "cadastrar-aluno",
       "cadastrar-turma",
+      "cadastrar-responsavel",
       "configuracoes",
     ];
 

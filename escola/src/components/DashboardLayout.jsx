@@ -14,7 +14,7 @@ const DashboardLayout = () => {
   const handleLogout = () => {
     // Chama a função de logout do contexto para limpar os dados do usuário
     logout();
-    navigate("/"); // Redireciona para a página de login
+    // Não precisa de navigate aqui pois o logout já faz window.location.replace
   };
 
   const toggleMenu = () => {
@@ -35,8 +35,10 @@ const DashboardLayout = () => {
       <main className={`main-content ${isMenuOpen ? "sidebar-open" : ""}`}>
         <header className="top-header">
           <div className="user-info">
-            {/* Notificações */}
-            <Notificacoes />
+            {/* Notificações - apenas para administradores */}
+            {user && user.cargo && user.cargo.toLowerCase() !== "professor" && (
+              <Notificacoes />
+            )}
 
             <Link
               to="/home/perfil"

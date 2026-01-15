@@ -1,24 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  format,
-  parseISO,
-  getDaysInMonth,
-  startOfMonth,
-  endOfMonth,
-} from "date-fns";
+import React, { useState, useEffect } from "react";
+import { format, parseISO, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import "../css/PlanejamentoISO.css";
 import PlanejamentoModal from "./PlanejamentoModal";
 
-const PlanejamentoISO = ({ turmaId, ano }) => {
+const PlanejamentoISOMensal = ({ turmaId, ano }) => {
   const [anoAtual, setAnoAtual] = useState(ano || new Date().getFullYear());
-  const [mesAtual, setMesAtual] = useState(new Date().getMonth() + 1);
   const [meses, setMeses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [modalInfo, setModalInfo] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [pendingByMonth, setPendingByMonth] = useState({}); // evita cliques duplos
+  const [pendingByMonth, setPendingByMonth] = useState({});
 
   useEffect(() => {
     if (turmaId) {
@@ -26,12 +18,10 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
     }
   }, [anoAtual, turmaId]);
 
-  // Se o prop de ano for fornecido, sincroniza com o estado interno
   useEffect(() => {
     if (ano && ano !== anoAtual) {
       setAnoAtual(ano);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ano]);
 
   const fetchMesesDoAno = async () => {
@@ -101,46 +91,28 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
         data
       );
 
-      // Abre modal imediatamente e busca detalhes completos em seguida
-      setModalInfo({
-        ...data,
-        semana_iso: data.semana_iso ?? semana.semanaISO,
-        ano_iso: data.ano_iso ?? semana.anoISO,
-      });
-      await fetchSemanasDoMes();
+      await fetchMesesDoAno();
       await abrirModalPorId(id);
     } catch (error) {
       console.error("❌ Erro ao criar planejamento:", error);
+      throw error;
     }
   };
 
-  // Abre o modal se existir planejamento, senão cria e abre
-  const keyWeek = (s) => `${s.anoISO}-${s.semanaISO}-${turmaId}`;
-
-  const abrirOuCriarPlanejamento = async (semana) => {
-    console.log("📂 Ação: abrir ou criar planejamento para semana:", semana);
-    const k = keyWeek(semana);
-    if (pendingByWeek[k]) return;
-    setPendingByWeek((m) => ({ ...m, [k]: true }));
+  const abrirOuCriarPlanejamento = async (mes) => {
+    console.log("📂 Ação: abrir ou criar planejamento para mês:", mes);
+    const k = keyMonth(mes);
+    if (pendingByMonth[k]) return;
+    setPendingByMonth((m) => ({ ...m, [k]: true }));
 
     try {
-      if (semana?.planejamento?.id_planejamento) {
-        // Abre modal imediatamente com dados mínimos e busca detalhes em seguida
-        setModalInfo({
-          id_planejamento: semana.planejamento.id_planejamento,
-          status: semana.planejamento.status,
-          semana_iso: semana.semanaISO,
-          ano_iso: semana.anoISO,
-          ano: semana.anoISO,
-          semana: semana.planejamento.semana,
-          mes: semana.planejamento.mes,
-        });
-        await abrirModalPorId(semana.planejamento.id_planejamento);
+      if (mes?.planejamento?.id_planejamento) {
+        await abrirModalPorId(mes.planejamento.id_planejamento);
       } else {
-        await criarPlanejamento(semana);
+        await criarPlanejamento(mes);
       }
     } finally {
-      setPendingByWeek((m) => {
+      setPendingByMonth((m) => {
         const { [k]: _, ...rest } = m;
         return rest;
       });
@@ -160,10 +132,8 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
     }
   };
 
-  const getNomeMesCompleto = () => {
-    return format(new Date(anoAtual, mesAtual - 1), "MMMM yyyy", {
-      locale: ptBR,
-    });
+  const getNomeMes = (numeroMes) => {
+    return format(new Date(anoAtual, numeroMes - 1), "MMMM", { locale: ptBR });
   };
 
   if (!turmaId) {
@@ -179,114 +149,86 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
       <div className="header-navegacao">
         <button
           className="btn-navegacao"
-          onClick={() => navegarMes("anterior")}
-          title="Mês anterior"
+          onClick={() => navegarAno("anterior")}
+          title="Ano anterior"
         >
           ← Anterior
         </button>
 
-        <h2 className="titulo-mes">{getNomeMesCompleto()}</h2>
+        <h2 className="titulo-mes">Planejamentos {anoAtual}</h2>
 
         <button
           className="btn-navegacao"
-          onClick={() => navegarMes("proximo")}
-          title="Próximo mês"
+          onClick={() => navegarAno("proximo")}
+          title="Próximo ano"
         >
           Próximo →
         </button>
       </div>
 
-      {/* Dicas rápidas de uso */}
       <HintStrip />
 
       {error && (
         <div className="error-message">
           <span>❌ {error}</span>
-          <button onClick={fetchSemanasDoMes}>Tentar novamente</button>
+          <button onClick={fetchMesesDoAno}>Tentar novamente</button>
         </div>
       )}
 
       {loading ? (
         <div className="loading">
           <div className="spinner"></div>
-          <p>Carregando semanas...</p>
+          <p>Carregando meses...</p>
         </div>
-      ) : semanas.length === 0 ? (
+      ) : meses.length === 0 ? (
         <div className="empty-state">
-          <p>📅 Nenhuma semana encontrada para este mês</p>
+          <p>📅 Nenhum mês encontrado para este ano</p>
         </div>
       ) : (
         <div className="semanas-grid">
-          {semanas.map((semana) => (
-            <div
-              key={`${semana.anoISO}-W${semana.semanaISO}`}
-              className={`semana-card ${
-                semana.compartilhada ? "compartilhada" : ""
-              }`}
-            >
+          {meses.map((mes) => (
+            <div key={`${mes.ano}-${mes.mes}`} className="semana-card">
               <div className="semana-header">
                 <div className="semana-numero">
-                  <strong>Semana {semana.semanaISO}</strong>
-                  <span className="ano-iso">{semana.anoISO}</span>
+                  <strong>{getNomeMes(mes.mes)}</strong>
+                  <span className="ano-iso">{mes.ano}</span>
                 </div>
 
                 <div className="semana-periodo">
-                  {format(parseISO(semana.inicioSemana), "dd/MM")} -
-                  {format(parseISO(semana.fimSemana), "dd/MM")}
+                  {getDaysInMonth(new Date(mes.ano, mes.mes - 1))} dias
                 </div>
               </div>
 
-              {semana.compartilhada && (
-                <div className="badge-compartilhada">
-                  <span className="icon">🔗</span>
-                  <span className="texto">
-                    Também em: {semana.outrosMesesNomes.join(", ")}
-                  </span>
-                </div>
-              )}
-
               <div className="planejamento-body">
-                {semana.planejamento && (
+                {mes.planejamento && (
                   <div className="planejamento-existente">
                     <div
-                      className={`status-badge status-${semana.planejamento.status
+                      className={`status-badge status-${mes.planejamento.status
                         ?.toLowerCase()
                         .replace(" ", "-")}`}
                     >
-                      {semana.planejamento.status}
+                      {mes.planejamento.status}
                     </div>
                   </div>
                 )}
                 <button
                   className="btn-abrir"
-                  disabled={!!pendingByWeek[keyWeek(semana)]}
-                  onClick={() => abrirOuCriarPlanejamento(semana)}
+                  disabled={!!pendingByMonth[keyMonth(mes)]}
+                  onClick={() => abrirOuCriarPlanejamento(mes)}
                   title="Abrir modal do planejamento"
                 >
-                  {pendingByWeek[keyWeek(semana)]
+                  {pendingByMonth[keyMonth(mes)]
                     ? "Abrindo..."
                     : "📂 Abrir planejamento"}
                 </button>
               </div>
 
-              {/* Mini calendário da semana */}
+              {/* Mini calendário do mês */}
               <div className="mini-calendario">
-                <div className="dias-semana-grid">
-                  {semana.diasSemana.map((dia) => {
-                    const diaDate = parseISO(dia);
-                    const diaDoMes = diaDate.getMonth() + 1;
-                    const isOutroMes = diaDoMes !== mesAtual;
-
-                    return (
-                      <div
-                        key={dia}
-                        className={`dia ${isOutroMes ? "outro-mes" : ""}`}
-                        title={format(diaDate, "dd/MM/yyyy", { locale: ptBR })}
-                      >
-                        {format(diaDate, "d")}
-                      </div>
-                    );
-                  })}
+                <div className="dias-mes-info">
+                  <span>
+                    {mes.mes.toString().padStart(2, "0")}/{mes.ano}
+                  </span>
                 </div>
               </div>
             </div>
@@ -300,7 +242,7 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
           onClose={() => setModalInfo(null)}
           onUpdate={async (updated) => {
             setModalInfo(updated);
-            await fetchSemanasDoMes();
+            await fetchMesesDoAno();
           }}
           onDelete={async (planejamentoId) => {
             try {
@@ -309,7 +251,7 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
                 { method: "DELETE", credentials: "include" }
               );
               if (!resp.ok) throw new Error("Falha ao excluir planejamento.");
-              await fetchSemanasDoMes();
+              await fetchMesesDoAno();
               setModalInfo(null);
               alert("Planejamento excluído com sucesso.");
             } catch (e) {
@@ -322,9 +264,8 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
   );
 };
 
-export default PlanejamentoISO;
+export default PlanejamentoISOMensal;
 
-// Componente interno simples para dicas contextuais
 const HintStrip = () => {
   const [open, setOpen] = useState(false);
   return (
@@ -363,16 +304,15 @@ const HintStrip = () => {
           }}
         >
           <li>
-            Use os botões "← Anterior" e "Próximo →" para navegar entre os
-            meses.
+            Use os botões "← Anterior" e "Próximo →" para navegar entre os anos.
           </li>
           <li>
-            Clique em "Abrir planejamento" em uma semana. Se ainda não existir,
-            ele será criado automaticamente.
+            Clique em "Abrir planejamento" em um mês. Se ainda não existir, ele
+            será criado automaticamente.
           </li>
           <li>
-            Semanas com o ícone 🔗 aparecem em mais de um mês, pois atravessam a
-            virada do mês.
+            Os planejamentos são organizados mensalmente para facilitar o
+            acompanhamento.
           </li>
           <li>
             A tarja de status indica a situação: Aprovado, Pendente ou
