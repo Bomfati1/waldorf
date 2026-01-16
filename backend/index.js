@@ -23,14 +23,22 @@ const JWT_SECRET =
   process.env.JWT_SECRET || "sua_chave_secreta_muito_segura_aqui_2024";
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
+// Lista de origens permitidas
+const allowedOrigins = [
+  FRONTEND_ORIGIN,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+];
+
+// Adiciona URL da Vercel se configurada
+if (process.env.VERCEL_URL) {
+  allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+}
+
 app.use(
   cors({
-    origin: [
-      FRONTEND_ORIGIN,
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
