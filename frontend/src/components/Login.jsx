@@ -22,11 +22,17 @@ const Login = () => {
     return <Navigate to="/home" replace />;
   }
 
-  // Efeito para verificar se o usuário já está logado via cookie
+  // Efeito para verificar se o usuário já está logado via token
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
         const response = await fetch(getApiUrl('/auth/me'), {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
           credentials: "include",
         });
 
@@ -78,6 +84,11 @@ const Login = () => {
       // Se o login for bem-sucedido:
       console.log("Login realizado com sucesso!", data);
 
+      // Salva o token no localStorage
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
       // Salva os dados do usuário no contexto e no localStorage
       login({
         userId: data.userId,
@@ -85,9 +96,6 @@ const Login = () => {
         cargo: data.cargo,
         email: email, // O email vem do estado do formulário
       });
-
-      // O "Lembre de mim" agora é gerenciado pelo backend via cookies JWT
-      // Não é mais necessário salvar dados no localStorage
 
       // Navega para o dashboard
       navigate("/home");

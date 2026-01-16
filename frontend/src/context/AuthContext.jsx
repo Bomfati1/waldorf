@@ -14,28 +14,40 @@ export const AuthProvider = ({ children }) => {
       try {
         // Primeiro verifica se há dados no localStorage
         const storedUserInfo = localStorage.getItem("userInfo");
+        const token = localStorage.getItem("token");
+        
         if (storedUserInfo) {
           setUser(JSON.parse(storedUserInfo));
         }
 
-        // Depois verifica se o token no backend ainda é válido
-        const response = await fetch(getApiUrl('/auth/me'), {
-          credentials: "include",
-        });
+        // Só verifica no backend se houver token
+        if (token) {
+          // Depois verifica se o token no backend ainda é válido
+          const response = await fetch(getApiUrl('/auth/me'), {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            credentials: "include",
+          });
 
-        if (response.ok) {
-          const userData = await response.json();
-          console.log(
-            "[AuthContext] Dados do usuário carregados do backend:",
-            userData
-          );
-          // Atualiza os dados do usuário com informações do backend
-          setUser(userData);
-          localStorage.setItem("userInfo", JSON.stringify(userData));
+          if (response.ok) {
+            const userData = await response.json();
+            console.log(
+              "[AuthContext] Dados do usuário carregados do backend:",
+              userData
+            );
+            // Atualiza os dados do usuário com informações do backend
+            setUser(userData);
+            localStorage.setItem("userInfo", JSON.stringify(userData));
+          } else {
+            // Token inválido, limpa os dados
+            localStorage.removeItem("userInfo");
+            localStorage.removeItem("token");
+            setUser(null);
+          }
         } else {
-          // Token inválido, limpa os dados
-          localStorage.removeItem("userInfo");
-          setUser(null);
+          // Sem token, usuário não autenticado
+          console.log("Usuário não autenticado");
         }
       } catch (error) {
         // Erro na verificação, mantém os dados do localStorage se existirem
@@ -57,9 +69,13 @@ export const AuthProvider = ({ children }) => {
   // Função para fazer logout: limpa o estado, localStorage e chama o backend
   const logout = async () => {
     try {
+      const token = localStorage.getItem("token");
       // Chama o backend para limpar o cookie
       await fetch(getApiUrl('/logout'), {
         method: "POST",
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
         credentials: "include",
       });
     } catch (error) {
@@ -67,6 +83,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       // Sempre limpa o estado local
       localStorage.removeItem("userInfo");
+      localStorage.removeItem("token");
       sessionStorage.clear(); // Limpa todo sessionStorage
       setUser(null);
 

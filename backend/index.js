@@ -176,6 +176,7 @@ app.post("/login", async (req, res) => {
       cargo: user.cargo,
       email: user.email,
       rememberMe: rememberMe,
+      token: token, // Retorna o token no response para uso com localStorage
     });
   } catch (err) {
     console.error(err.message);
@@ -185,7 +186,16 @@ app.post("/login", async (req, res) => {
 
 // Middleware para verificar token JWT
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.authToken;
+  // Tenta pegar o token do header Authorization primeiro
+  const authHeader = req.headers.authorization;
+  let token = authHeader && authHeader.startsWith('Bearer ') 
+    ? authHeader.substring(7) 
+    : null;
+  
+  // Se não tiver no header, tenta pegar do cookie
+  if (!token) {
+    token = req.cookies.authToken;
+  }
 
   if (!token) {
     return res.status(401).json({ error: "Token não fornecido" });
