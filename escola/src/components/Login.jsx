@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaUser, FaLock } from "react-icons/fa";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Importar o hook useAuth
+import { getApiUrl } from '../config/api';
 import "../css/Login.css";
 import "../css/App.css";
 
@@ -25,7 +26,7 @@ const Login = () => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const response = await fetch("http://localhost:3001/auth/me", {
+        const response = await fetch(getApiUrl('/auth/me'), {
           credentials: "include",
         });
 
@@ -51,7 +52,7 @@ const Login = () => {
 
     try {
       // Faz a requisição POST para o endpoint de login do nosso backend
-      const response = await fetch("http://localhost:3001/login", {
+      const response = await fetch(getApiUrl('/login'), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

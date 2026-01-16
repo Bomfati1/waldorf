@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
+import { getApiUrl } from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -18,7 +19,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         // Depois verifica se o token no backend ainda é válido
-        const response = await fetch("http://localhost:3001/auth/me", {
+        const response = await fetch(getApiUrl('/auth/me'), {
           credentials: "include",
         });
 
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       // Chama o backend para limpar o cookie
-      await fetch("http://localhost:3001/logout", {
+      await fetch(getApiUrl('/logout'), {
         method: "POST",
         credentials: "include",
       });

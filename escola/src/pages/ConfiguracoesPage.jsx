@@ -41,6 +41,12 @@ function ConfiguracoesPage() {
     "Administrador Pedagógico",
     "Professor",
   ];
+  
+  // Cargos disponíveis no formulário (sem Administrador Pedagógico)
+  const cargosFormulario = [
+    "Administrador Geral",
+    "Professor",
+  ];
 
   useEffect(() => {
     if (showForm) {
@@ -272,11 +278,11 @@ function ConfiguracoesPage() {
                 <div className="form-group">
                   <SelectWithHint
                     label="Cargo"
-                    hint="Selecione o nível de acesso: Administrador Geral (acesso total), Administrador Pedagógico (acesso pedagógico) ou Professor (acesso limitado)"
+                    hint="Selecione o nível de acesso: Administrador Geral (acesso total) ou Professor (acesso limitado)"
                     value={newMemberRole}
                     onChange={(e) => setNewMemberRole(e.target.value)}
                   >
-                    {cargos.map((cargo) => (
+                    {cargosFormulario.map((cargo) => (
                       <option key={cargo} value={cargo}>
                         {cargo}
                       </option>
