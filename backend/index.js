@@ -208,6 +208,10 @@ app.post("/login", async (req, res) => {
 
 // Middleware para verificar token JWT
 const authenticateToken = (req, res, next) => {
+  console.log("\n🔐 [AUTH] Verificando autenticação...");
+  console.log("📍 [AUTH] Rota:", req.method, req.path);
+  console.log("🔑 [AUTH] Headers:", JSON.stringify(req.headers.authorization?.substring(0, 50)));
+  
   // Tenta pegar o token do header Authorization primeiro
   const authHeader = req.headers.authorization;
   let token =
@@ -218,16 +222,22 @@ const authenticateToken = (req, res, next) => {
   // Se não tiver no header, tenta pegar do cookie
   if (!token) {
     token = req.cookies.authToken;
+    console.log("🍪 [AUTH] Tentando cookie:", token ? "Encontrado" : "Não encontrado");
+  } else {
+    console.log("✅ [AUTH] Token encontrado no header");
   }
 
   if (!token) {
+    console.log("❌ [AUTH] Token não fornecido");
     return res.status(401).json({ error: "Token não fornecido" });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.log("❌ [AUTH] Token inválido:", err.message);
       return res.status(403).json({ error: "Token inválido ou expirado" });
     }
+    console.log("✅ [AUTH] Token válido - Usuário:", user.userId, user.email);
     req.user = user;
     next();
   });
