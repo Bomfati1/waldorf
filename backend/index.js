@@ -43,22 +43,22 @@ app.use(
     origin: function (origin, callback) {
       // Permite requisições sem origin (ex: Postman, mobile apps)
       if (!origin) return callback(null, true);
-      
+
       // Permite qualquer subdomínio da Vercel
-      if (origin.includes('vercel.app')) {
+      if (origin.includes("vercel.app")) {
         return callback(null, true);
       }
-      
+
       // Verifica se a origin está na lista permitida
       if (allowedOrigins.indexOf(origin) !== -1) {
         return callback(null, true);
       }
-      
-      callback(new Error('Not allowed by CORS'));
+
+      callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   })
 );
 app.use(express.json());
