@@ -2797,6 +2797,7 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
     const { familia_id } = alunoResult.rows[0];
 
     // 2) Remove dependências que referenciam o aluno (ordem importante)
+    console.log("🗑️ [DELETE ALUNO] Removendo presencas...");
     const presAntes = await client.query(
       "SELECT COUNT(*)::int as c FROM presencas WHERE aluno_id = $1",
       [alunoId]
@@ -2809,6 +2810,8 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
       "SELECT COUNT(*)::int as c FROM presencas WHERE aluno_id = $1",
       [alunoId]
     );
+    
+    console.log("🗑️ [DELETE ALUNO] Removendo turma_alunos...");
     let delTurmaAluno;
     try {
       delTurmaAluno = await client.query(
@@ -2817,44 +2820,50 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
       );
     } catch (fkErr) {
       console.error(
-        "[EXCLUIR ALUNO] Falha ao deletar turma_alunos:",
+        "❌ [DELETE ALUNO] Falha ao deletar turma_alunos:",
         fkErr.message
       );
-      console.error("[EXCLUIR ALUNO] presencas antes/depois:", {
+      console.error("❌ [DELETE ALUNO] presencas antes/depois:", {
         antes: presAntes.rows[0].c,
         depois: presDepois.rows[0].c,
       });
       throw fkErr;
     }
-    const delVinculosFamilia = await client.query(
-      "DELETE FROM aluno_familias WHERE aluno_id = $1",
+    
+    console.log("🗑️ [DELETE ALUNO] Removendo aluno_anexos...");
+    const delAnexos = await client.query(
+      "DELETE FROM aluno_anexos WHERE aluno_id = $1",
       [alunoId]
     );
 
-    console.log("[EXCLUIR ALUNO] Removidos registros:", {
+    console.log("✅ [DELETE ALUNO] Removidos registros:", {
       presencas: delPres.rowCount,
       turma_alunos: delTurmaAluno.rowCount,
-      aluno_familias: delVinculosFamilia.rowCount,
+      aluno_anexos: delAnexos.rowCount,
     });
 
     // 3) Remove o aluno
+    console.log("🗑️ [DELETE ALUNO] Removendo aluno...");
     await client.query("DELETE FROM alunos WHERE id = $1", [alunoId]);
 
-    // 4) Se não houver mais vínculos com a família, remove a família
+    // 4) Se não houver mais alunos com essa família, remove a família
     if (familia_id) {
-      const vinculosRestantes = await client.query(
-        `SELECT
-           (SELECT COUNT(*) FROM aluno_familias WHERE familia_id = $1)::int
-           + (SELECT COUNT(*) FROM alunos WHERE familia_id = $1)::int AS total`,
+      console.log("🗑️ [DELETE ALUNO] Verificando outros alunos da família", familia_id);
+      const outrosAlunos = await client.query(
+        "SELECT COUNT(*)::int as total FROM alunos WHERE familia_id = $1",
         [familia_id]
       );
-      const total = parseInt(vinculosRestantes.rows[0].total, 10) || 0;
+      const total = outrosAlunos.rows[0].total;
+      console.log("🗑️ [DELETE ALUNO] Outros alunos na família:", total);
+      
       if (total === 0) {
+        console.log("🗑️ [DELETE ALUNO] Removendo família órfã:", familia_id);
         await client.query("DELETE FROM familias WHERE id = $1", [familia_id]);
       }
     }
 
     await client.query("COMMIT");
+    console.log("✅ [DELETE ALUNO] Aluno excluído com sucesso!");
     res.status(200).json({
       message: "Aluno excluído com sucesso. Registros vinculados foram limpos.",
     });
