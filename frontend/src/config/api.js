@@ -26,20 +26,40 @@ export const getAuthHeaders = () => {
 
 // Helper para fazer fetch com autenticação
 export const fetchWithAuth = async (path, options = {}) => {
-  const url = getApiUrl(path);
   const token = localStorage.getItem("token");
+  const url = getApiUrl(path);
   
-  // Não adiciona Content-Type se for FormData (o browser adiciona automaticamente com boundary)
+  console.log("🔐 [fetchWithAuth] Endpoint:", path);
+  console.log("🔐 [fetchWithAuth] Token presente:", !!token);
+  console.log("🔐 [fetchWithAuth] URL completa:", url);
+  
+  // Detecta se é FormData
   const isFormData = options.body instanceof FormData;
   
-  const headers = {
-    ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...(options.headers || {}),
-  };
+  // Cria headers usando Headers API para garantir que funcionem
+  const headers = new Headers();
   
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  // Adiciona Content-Type apenas se não for FormData
+  if (!isFormData) {
+    headers.set("Content-Type", "application/json");
   }
+  
+  // Adiciona headers customizados passados nas options
+  if (options.headers) {
+    Object.entries(options.headers).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
+  }
+  
+  // FORÇA adicionar o token se existir
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+    console.log("✅ [fetchWithAuth] Header Authorization adicionado:", `Bearer ${token.substring(0, 20)}...`);
+  } else {
+    console.warn("⚠️ [fetchWithAuth] Nenhum token encontrado no localStorage!");
+  }
+  
+  console.log("📡 [fetchWithAuth] Headers finais:", Array.from(headers.entries()));
   
   const config = {
     ...options,
@@ -47,10 +67,13 @@ export const fetchWithAuth = async (path, options = {}) => {
     credentials: "include",
   };
   
+  console.log("🚀 [fetchWithAuth] Fazendo requisição...");
   const response = await fetch(url, config);
+  console.log("📥 [fetchWithAuth] Response status:", response.status);
   
   // Se retornar 401, redireciona para login
   if (response.status === 401 && !path.includes('/login')) {
+    console.log("❌ [fetchWithAuth] 401 Unauthorized - Limpando token e redirecionando");
     localStorage.removeItem("token");
     localStorage.removeItem("userInfo");
     window.location.href = "/login";
