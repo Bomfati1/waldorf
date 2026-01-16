@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../../config/api";
+import { getApiUrl } from "../config/api";
 import InputWithHint from "../components/InputWithHint";
 import ModalBase from "../components/ModalBase";
 import EditAlunoModal from "../components/EditAlunoModal";

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../../config/api";
+import { getApiUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import { useModal } from "../context/ModalContext";
 import jsPDF from "jspdf";

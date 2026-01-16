@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../../config/api";
+import { getApiUrl } from "../config/api";
 import "../css/RelatoriosPage.css";
 
 const RelatoriosPage = () => {
