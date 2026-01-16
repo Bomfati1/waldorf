@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import jsPDF from "jspdf";
 import { drawHeader, drawFooter, formatBRDate } from "../utils/pdfUtils";
 
@@ -29,8 +29,8 @@ const HistoricoPresencaPage = () => {
 
       try {
         const [historicoRes, turmaRes] = await Promise.all([
-          fetch(getApiUrl(`/turmas/${turmaId}/historico-presenca`)),
-          fetch(getApiUrl(`/turmas/${turmaId}/detalhes-presenca`)),
+          fetchWithAuth(`/turmas/${turmaId}/historico-presenca`),
+          fetchWithAuth(`/turmas/${turmaId}/detalhes-presenca`),
         ]);
 
         if (!historicoRes.ok || !turmaRes.ok) {

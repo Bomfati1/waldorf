@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl, API_URL } from "../config/api";
+import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import { useModal } from "../context/ModalContext";
 import ModalBase from "./ModalBase";
@@ -305,7 +305,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     }
     try {
       // Cria o responsável usando os dados do formulário atual
-      const criar = await fetch(getApiUrl("/responsaveis"), {
+      const criar = await fetchWithAuth("/responsaveis", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -461,7 +461,9 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     setGeneratingPDF(true);
     try {
       const resp = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/presencas?ano=${selectedYear}`),
+        getApiUrl(
+          `/alunos/${alunoData.aluno_id}/presencas?ano=${selectedYear}`
+        ),
         { credentials: "include" }
       );
       const data = await resp.json();

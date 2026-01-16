@@ -1,6 +1,6 @@
 // src/pages/ConfiguracoesPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import ModalBase from "../components/ModalBase";
 import { useModal } from "../context/ModalContext";
@@ -42,12 +42,9 @@ function ConfiguracoesPage() {
     "Administrador Pedagógico",
     "Professor",
   ];
-  
+
   // Cargos disponíveis no formulário (sem Administrador Pedagógico)
-  const cargosFormulario = [
-    "Administrador Geral",
-    "Professor",
-  ];
+  const cargosFormulario = ["Administrador Geral", "Professor"];
 
   useEffect(() => {
     if (showForm) {
@@ -68,7 +65,7 @@ function ConfiguracoesPage() {
 
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl("/usuarios"), {
+      const response = await fetchWithAuth("/usuarios", {
         credentials: "include",
       });
       if (!response.ok) {
@@ -123,7 +120,7 @@ function ConfiguracoesPage() {
       return;
     }
     try {
-      const response = await fetch(getApiUrl("/register"), {
+      const response = await fetchWithAuth("/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,13 +154,10 @@ function ConfiguracoesPage() {
   const handleRemoveMember = async (memberId) => {
     if (window.confirm("Tem certeza que deseja remover este membro?")) {
       try {
-        const response = await fetch(
-          getApiUrl(`/usuarios/${memberId}`),
-          {
-            method: "DELETE",
-            credentials: "include",
-          }
-        );
+        const response = await fetchWithAuth(`/usuarios/${memberId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
         if (!response.ok) {
           throw new Error("Falha ao remover membro.");
         }

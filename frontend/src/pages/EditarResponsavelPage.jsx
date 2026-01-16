@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import InputWithHint from "../components/InputWithHint";
 
 const EditarResponsavelCSS = () => (
@@ -131,12 +131,9 @@ const EditarResponsavelPage = () => {
   useEffect(() => {
     const fetchResponsavel = async () => {
       try {
-        const response = await fetch(
-          getApiUrl(`/responsaveis/${id}`),
-          {
-            credentials: "include",
-          }
-        );
+        const response = await fetchWithAuth(`/responsaveis/${id}`, {
+          credentials: "include",
+        });
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -199,7 +196,7 @@ const EditarResponsavelPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(getApiUrl(`/responsaveis/${id}`), {
+      const response = await fetchWithAuth(`/responsaveis/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

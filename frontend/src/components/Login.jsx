@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaUser, FaLock } from "react-icons/fa";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Importar o hook useAuth
-import { getApiUrl } from '../config/api';
+import { getApiUrl, fetchWithAuth } from '../config/api';
 import "../css/Login.css";
 import "../css/App.css";
 
@@ -29,7 +29,7 @@ const Login = () => {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        const response = await fetch(getApiUrl('/auth/me'), {
+        const response = await fetchWithAuth('/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -58,7 +58,7 @@ const Login = () => {
 
     try {
       // Faz a requisição POST para o endpoint de login do nosso backend
-      const response = await fetch(getApiUrl('/login'), {
+      const response = await fetchWithAuth('/login', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

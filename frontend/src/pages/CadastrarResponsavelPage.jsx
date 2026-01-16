@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import ResponsavelCPF from "../components/ResponsavelCPF";
 import InputWithHint from "../components/InputWithHint";
 import "../css/FormLayout.css";
@@ -78,7 +78,7 @@ const CadastrarResponsavelPage = () => {
     console.log("📄 [CADASTRO RESPONSÁVEL] Dados:", formData);
 
     try {
-      const response = await fetch(getApiUrl("/responsaveis"), {
+      const response = await fetchWithAuth("/responsaveis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

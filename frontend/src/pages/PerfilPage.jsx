@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getApiUrl, API_URL } from "../config/api"; // Importar o hook
+import { getApiUrl, API_URL, fetchWithAuth } from "../config/api"; // Importar o hook
 import "../css/PerfilPage.css"; // Vamos criar este CSS a seguir
 
 const PerfilPage = () => {
@@ -36,14 +36,11 @@ const PerfilPage = () => {
     formData.append("profilePhoto", file);
 
     try {
-      const response = await fetch(
-        getApiUrl("/upload-profile-photo"),
-        {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        }
-      );
+      const response = await fetchWithAuth("/upload-profile-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
 
       const data = await response.json();
 
@@ -81,13 +78,10 @@ const PerfilPage = () => {
     setMessageType("");
 
     try {
-      const response = await fetch(
-        getApiUrl("/remove-profile-photo"),
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
+      const response = await fetchWithAuth("/remove-profile-photo", {
+        method: "DELETE",
+        credentials: "include",
+      });
 
       const data = await response.json();
 

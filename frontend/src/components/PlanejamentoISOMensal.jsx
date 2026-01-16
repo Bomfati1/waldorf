@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import { format, parseISO, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import "../css/PlanejamentoISO.css";
@@ -66,19 +66,16 @@ const PlanejamentoISOMensal = ({ turmaId, ano }) => {
     console.log("🆕 Criando planejamento para mês:", mes);
 
     try {
-      const response = await fetch(
-        getApiUrl("/planejamentos/mensal"),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            turma_id: turmaId,
-            ano: mes.ano,
-            mes: mes.mes,
-          }),
-        }
-      );
+      const response = await fetchWithAuth("/planejamentos/mensal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          turma_id: turmaId,
+          ano: mes.ano,
+          mes: mes.mes,
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -122,7 +119,7 @@ const PlanejamentoISOMensal = ({ turmaId, ano }) => {
 
   const abrirModalPorId = async (id) => {
     try {
-      const resp = await fetch(getApiUrl(`/planejamentos/${id}`), {
+      const resp = await fetchWithAuth(`/planejamentos/${id}`, {
         credentials: "include",
       });
       if (!resp.ok) throw new Error("Falha ao buscar planejamento.");

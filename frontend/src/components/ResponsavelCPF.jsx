@@ -62,12 +62,10 @@ const ResponsavelCPF = ({
     console.log("🔍 [ResponsavelCPF] Buscando CPF:", cpfLimpo);
 
     try {
-      const url = getApiUrl(`/responsaveis/buscar-por-cpf/${cpfLimpo}`);
+      const url = `/responsaveis/buscar-por-cpf/${cpfLimpo}`;
       console.log("🌐 [ResponsavelCPF] URL da requisição:", url);
 
-      const response = await fetch(url, {
-        credentials: "include",
-      });
+      const response = await fetchWithAuth(url);
 
       console.log("📡 [ResponsavelCPF] Status da resposta:", response.status);
 

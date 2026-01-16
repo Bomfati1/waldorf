@@ -1,6 +1,6 @@
 // src/pages/PreMatriculaPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import InteressadosDashboardPage from "./InteressadosDashboardPage"; // Importa o componente do dashboard
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
@@ -100,7 +100,7 @@ const PreMatriculaPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(getApiUrl("/interessados"), {
+      const response = await fetchWithAuth("/interessados", {
         credentials: "include",
       });
       if (!response.ok) {
@@ -127,7 +127,7 @@ const PreMatriculaPage = () => {
     const updatedInteressado = { ...interessado, status: newStatus };
 
     try {
-      const response = await fetch(getApiUrl(`/interessados/${id}`), {
+      const response = await fetchWithAuth(`/interessados/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -197,7 +197,7 @@ const PreMatriculaPage = () => {
       // Adiciona um log para depuração. Verifique o console do navegador (F12).
       console.log("Enviando para o backend:", dataToSave);
 
-      const response = await fetch(getApiUrl(`/interessados/${id}`), {
+      const response = await fetchWithAuth(`/interessados/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -293,7 +293,7 @@ const PreMatriculaPage = () => {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(getApiUrl(`/interessados/${id}`), {
+      const response = await fetchWithAuth(`/interessados/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -356,7 +356,7 @@ const PreMatriculaPage = () => {
         dataToSave.data_contato = new Date().toISOString();
       }
 
-      const response = await fetch(getApiUrl("/interessados"), {
+      const response = await fetchWithAuth("/interessados", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -372,10 +372,10 @@ const PreMatriculaPage = () => {
 
       // Adiciona o novo interessado no início da lista
       setPreMatriculas((current) => [savedData, ...current]);
-      
+
       // Reseta o formulário
       handleCancelNewClick();
-      
+
       alert("Interessado adicionado com sucesso!");
     } catch (err) {
       console.error("Erro ao criar interessado:", err);
@@ -507,204 +507,114 @@ const PreMatriculaPage = () => {
                 </button>
               </div>
               <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  minWidth: "600px",
-                }}
-              >
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #dee2e6" }}>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal", // Garante que o texto não seja negrito
-                      }}
-                    >
-                      Nome
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      Telefone
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      Como Conheceu
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      Data Contato
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      Status
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#f8f9fa",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Linha para adicionar novo interessado */}
-                  {isAddingNew && (
-                    <tr style={{ borderBottom: "2px solid #28a745", backgroundColor: "#f0fff4" }}>
-                      <td style={{ padding: "12px" }}>
-                        <input
-                          type="text"
-                          name="nome"
-                          placeholder="Nome completo *"
-                          value={newInteressado.nome}
-                          onChange={handleNewInteressadoChange}
-                          style={inputStyle}
-                          autoFocus
-                        />
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <input
-                          type="text"
-                          name="telefone"
-                          placeholder="(00) 00000-0000 *"
-                          value={newInteressado.telefone}
-                          onChange={handleNewInteressadoChange}
-                          style={inputStyle}
-                        />
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <select
-                          name="como_conheceu"
-                          value={newInteressado.como_conheceu}
-                          onChange={handleNewInteressadoChange}
-                          style={inputStyle}
-                        >
-                          {comoConheceuOptions.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <input
-                          type="date"
-                          name="data_contato"
-                          value={newInteressado.data_contato}
-                          onChange={handleNewInteressadoChange}
-                          style={inputStyle}
-                        />
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <select
-                          name="status"
-                          value={newInteressado.status}
-                          onChange={handleNewInteressadoChange}
-                          style={getStatusSelectStyles(newInteressado.status)}
-                        >
-                          {statusOptions.map((option) => (
-                            <option
-                              key={option}
-                              value={option}
-                              style={{
-                                color: "black",
-                                backgroundColor: "white",
-                              }}
-                            >
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
-                        <button
-                          onClick={handleSaveNewClick}
-                          style={saveButtonStyle}
-                        >
-                          Salvar
-                        </button>
-                        <button
-                          onClick={handleCancelNewClick}
-                          style={cancelButtonStyle}
-                        >
-                          Cancelar
-                        </button>
-                      </td>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    minWidth: "600px",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid #dee2e6" }}>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#f8f9fa",
+                          fontWeight: "normal", // Garante que o texto não seja negrito
+                        }}
+                      >
+                        Nome
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#f8f9fa",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        Telefone
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#f8f9fa",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        Como Conheceu
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#f8f9fa",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        Data Contato
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#f8f9fa",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        Status
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#f8f9fa",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        Ações
+                      </th>
                     </tr>
-                  )}
-                  
-                  {filteredMatriculas.map((matricula) =>
-                    editingRowId === matricula.id ? (
-                      // Linha em modo de edição
+                  </thead>
+                  <tbody>
+                    {/* Linha para adicionar novo interessado */}
+                    {isAddingNew && (
                       <tr
-                        key={matricula.id}
-                        style={{ borderBottom: "1px solid #dee2e6" }}
+                        style={{
+                          borderBottom: "2px solid #28a745",
+                          backgroundColor: "#f0fff4",
+                        }}
                       >
                         <td style={{ padding: "12px" }}>
                           <input
                             type="text"
                             name="nome"
-                            value={editedData.nome}
-                            onChange={handleEditChange}
+                            placeholder="Nome completo *"
+                            value={newInteressado.nome}
+                            onChange={handleNewInteressadoChange}
                             style={inputStyle}
+                            autoFocus
                           />
                         </td>
                         <td style={{ padding: "12px" }}>
                           <input
                             type="text"
                             name="telefone"
-                            value={editedData.telefone}
-                            onChange={handleEditChange}
+                            placeholder="(00) 00000-0000 *"
+                            value={newInteressado.telefone}
+                            onChange={handleNewInteressadoChange}
                             style={inputStyle}
                           />
                         </td>
                         <td style={{ padding: "12px" }}>
                           <select
                             name="como_conheceu"
-                            value={editedData.como_conheceu || ""}
-                            onChange={handleEditChange}
+                            value={newInteressado.como_conheceu}
+                            onChange={handleNewInteressadoChange}
                             style={inputStyle}
                           >
-                            {/* Se o valor atual não estiver nas opções, preserva-o como primeira opção */}
-                            {editedData.como_conheceu &&
-                              !comoConheceuOptions.includes(
-                                editedData.como_conheceu
-                              ) && (
-                                <option value={editedData.como_conheceu}>
-                                  {editedData.como_conheceu}
-                                </option>
-                              )}
                             {comoConheceuOptions.map((option) => (
                               <option key={option} value={option}>
                                 {option}
@@ -716,17 +626,17 @@ const PreMatriculaPage = () => {
                           <input
                             type="date"
                             name="data_contato"
-                            value={editedData.data_contato}
-                            onChange={handleEditChange}
+                            value={newInteressado.data_contato}
+                            onChange={handleNewInteressadoChange}
                             style={inputStyle}
                           />
                         </td>
                         <td style={{ padding: "12px" }}>
                           <select
                             name="status"
-                            value={editedData.status}
-                            onChange={handleEditChange}
-                            style={getStatusSelectStyles(editedData.status)}
+                            value={newInteressado.status}
+                            onChange={handleNewInteressadoChange}
+                            style={getStatusSelectStyles(newInteressado.status)}
                           >
                             {statusOptions.map((option) => (
                               <option
@@ -744,77 +654,172 @@ const PreMatriculaPage = () => {
                         </td>
                         <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
                           <button
-                            onClick={() => handleSaveClick(matricula.id)}
+                            onClick={handleSaveNewClick}
                             style={saveButtonStyle}
                           >
                             Salvar
                           </button>
                           <button
-                            onClick={handleCancelClick}
+                            onClick={handleCancelNewClick}
                             style={cancelButtonStyle}
                           >
                             Cancelar
                           </button>
-                          <button
-                            onClick={() => handleDeleteClick(matricula.id)}
-                            style={deleteButtonStyle}
-                          >
-                            Excluir
-                          </button>
                         </td>
                       </tr>
-                    ) : (
-                      // Linha em modo de visualização
-                      <tr
-                        key={matricula.id}
-                        style={{ borderBottom: "1px solid #dee2e6" }}
-                      >
-                        <td style={{ padding: "12px" }}>{matricula.nome}</td>
-                        <td style={{ padding: "12px" }}>
-                          {matricula.telefone}
-                        </td>
-                        <td style={{ padding: "12px" }}>
-                          {matricula.como_conheceu}
-                        </td>
-                        <td style={{ padding: "12px" }}>
-                          {formatDate(matricula.data_contato)}
-                        </td>
-                        <td style={{ padding: "12px" }}>
-                          <select
-                            value={matricula.status}
-                            onChange={(e) =>
-                              handleStatusChange(matricula.id, e.target.value)
-                            }
-                            style={getStatusSelectStyles(matricula.status)}
-                          >
-                            {statusOptions.map((option) => (
-                              <option
-                                key={option}
-                                value={option}
-                                style={{
-                                  color: "black",
-                                  backgroundColor: "white",
-                                }}
-                              >
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td style={{ padding: "12px" }}>
-                          <button
-                            onClick={() => handleEditClick(matricula)}
-                            style={editButtonStyle}
-                          >
-                            Editar
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+
+                    {filteredMatriculas.map((matricula) =>
+                      editingRowId === matricula.id ? (
+                        // Linha em modo de edição
+                        <tr
+                          key={matricula.id}
+                          style={{ borderBottom: "1px solid #dee2e6" }}
+                        >
+                          <td style={{ padding: "12px" }}>
+                            <input
+                              type="text"
+                              name="nome"
+                              value={editedData.nome}
+                              onChange={handleEditChange}
+                              style={inputStyle}
+                            />
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <input
+                              type="text"
+                              name="telefone"
+                              value={editedData.telefone}
+                              onChange={handleEditChange}
+                              style={inputStyle}
+                            />
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <select
+                              name="como_conheceu"
+                              value={editedData.como_conheceu || ""}
+                              onChange={handleEditChange}
+                              style={inputStyle}
+                            >
+                              {/* Se o valor atual não estiver nas opções, preserva-o como primeira opção */}
+                              {editedData.como_conheceu &&
+                                !comoConheceuOptions.includes(
+                                  editedData.como_conheceu
+                                ) && (
+                                  <option value={editedData.como_conheceu}>
+                                    {editedData.como_conheceu}
+                                  </option>
+                                )}
+                              {comoConheceuOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <input
+                              type="date"
+                              name="data_contato"
+                              value={editedData.data_contato}
+                              onChange={handleEditChange}
+                              style={inputStyle}
+                            />
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <select
+                              name="status"
+                              value={editedData.status}
+                              onChange={handleEditChange}
+                              style={getStatusSelectStyles(editedData.status)}
+                            >
+                              {statusOptions.map((option) => (
+                                <option
+                                  key={option}
+                                  value={option}
+                                  style={{
+                                    color: "black",
+                                    backgroundColor: "white",
+                                  }}
+                                >
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+                            <button
+                              onClick={() => handleSaveClick(matricula.id)}
+                              style={saveButtonStyle}
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              onClick={handleCancelClick}
+                              style={cancelButtonStyle}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(matricula.id)}
+                              style={deleteButtonStyle}
+                            >
+                              Excluir
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (
+                        // Linha em modo de visualização
+                        <tr
+                          key={matricula.id}
+                          style={{ borderBottom: "1px solid #dee2e6" }}
+                        >
+                          <td style={{ padding: "12px" }}>{matricula.nome}</td>
+                          <td style={{ padding: "12px" }}>
+                            {matricula.telefone}
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            {matricula.como_conheceu}
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            {formatDate(matricula.data_contato)}
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <select
+                              value={matricula.status}
+                              onChange={(e) =>
+                                handleStatusChange(matricula.id, e.target.value)
+                              }
+                              style={getStatusSelectStyles(matricula.status)}
+                            >
+                              {statusOptions.map((option) => (
+                                <option
+                                  key={option}
+                                  value={option}
+                                  style={{
+                                    color: "black",
+                                    backgroundColor: "white",
+                                  }}
+                                >
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <button
+                              onClick={() => handleEditClick(matricula)}
+                              style={editButtonStyle}
+                            >
+                              Editar
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import InputWithHint from "../components/InputWithHint";
 
 const statusOptions = [
@@ -31,10 +31,8 @@ const PresencaPage = () => {
       try {
         // Busca detalhes da turma e presenças existentes em paralelo
         const [turmaRes, presencasRes] = await Promise.all([
-          fetch(getApiUrl(`/turmas/${turmaId}/detalhes-presenca`)),
-          fetch(
-            getApiUrl(`/turmas/${turmaId}/presencas?data=${selectedDate}`)
-          ),
+          fetchWithAuth(`/turmas/${turmaId}/detalhes-presenca`),
+          fetchWithAuth(`/turmas/${turmaId}/presencas?data=${selectedDate}`),
         ]);
 
         if (!turmaRes.ok) {
@@ -129,14 +127,11 @@ const PresencaPage = () => {
     };
 
     try {
-      const response = await fetch(
-        getApiUrl(`/turmas/${turmaId}/presencas`),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetchWithAuth(`/turmas/${turmaId}/presencas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

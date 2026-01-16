@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import "../css/RelatoriosPage.css";
 
 const RelatoriosPage = () => {
@@ -23,8 +23,8 @@ const RelatoriosPage = () => {
   const fetchRelatorios = async () => {
     setLoading(true);
     try {
-      const response = await fetch(getApiUrl("/relatorios"), {
-        credentials: "include"
+      const response = await fetchWithAuth("/relatorios", {
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error("Falha ao buscar relatórios.");
@@ -46,8 +46,8 @@ const RelatoriosPage = () => {
     const fetchAlunos = async () => {
       try {
         console.log("Buscando alunos ativos...");
-        const res = await fetch(getApiUrl("/alunos/ativos-simples"), {
-          credentials: "include"
+        const res = await fetchWithAuth("/alunos/ativos-simples", {
+          credentials: "include",
         });
         console.log("Resposta da busca de alunos:", res.status, res.statusText);
         if (!res.ok) {
@@ -66,8 +66,8 @@ const RelatoriosPage = () => {
     const fetchTurmas = async () => {
       try {
         console.log("Buscando turmas...");
-        const res = await fetch(getApiUrl("/turmas"), {
-          credentials: "include"
+        const res = await fetchWithAuth("/turmas", {
+          credentials: "include",
         });
         console.log("Resposta da busca de turmas:", res.status, res.statusText);
         if (!res.ok) {
@@ -119,10 +119,10 @@ const RelatoriosPage = () => {
     }
 
     try {
-      const response = await fetch(getApiUrl("/relatorios/upload"), {
+      const response = await fetchWithAuth("/relatorios/upload", {
         method: "POST",
         body: formData,
-        credentials: "include"
+        credentials: "include",
       });
 
       const data = await response.json();
@@ -148,9 +148,9 @@ const RelatoriosPage = () => {
     }
 
     try {
-      const response = await fetch(getApiUrl(`/relatorios/${id}`), {
+      const response = await fetchWithAuth(`/relatorios/${id}`, {
         method: "DELETE",
-        credentials: "include"
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -250,13 +250,18 @@ const RelatoriosPage = () => {
                   ))
                 ) : (
                   <option value="" disabled>
-                    {alunos.length === 0 ? "Nenhum aluno encontrado" : "Carregando alunos..."}
+                    {alunos.length === 0
+                      ? "Nenhum aluno encontrado"
+                      : "Carregando alunos..."}
                   </option>
                 )}
               </select>
               {alunos.length === 0 && (
-                <p style={{ color: 'red', fontSize: '0.9rem', marginTop: '5px' }}>
-                  Nenhum aluno ativo encontrado. Verifique se há alunos cadastrados e ativos.
+                <p
+                  style={{ color: "red", fontSize: "0.9rem", marginTop: "5px" }}
+                >
+                  Nenhum aluno ativo encontrado. Verifique se há alunos
+                  cadastrados e ativos.
                 </p>
               )}
             </div>
@@ -280,12 +285,16 @@ const RelatoriosPage = () => {
                   ))
                 ) : (
                   <option value="" disabled>
-                    {turmas.length === 0 ? "Nenhuma turma encontrada" : "Carregando turmas..."}
+                    {turmas.length === 0
+                      ? "Nenhuma turma encontrada"
+                      : "Carregando turmas..."}
                   </option>
                 )}
               </select>
               {turmas.length === 0 && (
-                <p style={{ color: 'red', fontSize: '0.9rem', marginTop: '5px' }}>
+                <p
+                  style={{ color: "red", fontSize: "0.9rem", marginTop: "5px" }}
+                >
                   Nenhuma turma encontrada. Verifique se há turmas cadastradas.
                 </p>
               )}
@@ -320,9 +329,7 @@ const RelatoriosPage = () => {
                 relatorios.map((relatorio) => (
                   <tr key={relatorio.id}>
                     <td>{relatorio.nome_original}</td>
-                    <td className="capitalize">
-                      {relatorio.tipo_destino}
-                    </td>
+                    <td className="capitalize">{relatorio.tipo_destino}</td>
                     <td>{relatorio.nome_destino}</td>
                     <td>{formatFileSize(relatorio.tamanho_bytes)}</td>
                     <td>{formatDate(relatorio.data_upload)}</td>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getApiUrl, API_URL } from "../config/api";
+import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "../context/AuthContext";
@@ -45,7 +45,9 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
         try {
           setIsoLoading(true);
           const resp = await fetch(
-            getApiUrl(`/planejamentos/semana-iso/${info.ano_iso}/${info.semana_iso}`),
+            getApiUrl(
+              `/planejamentos/semana-iso/${info.ano_iso}/${info.semana_iso}`
+            ),
             { credentials: "include" }
           );
           if (resp.ok) {
@@ -147,7 +149,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
   const handleDeleteAttachment = async (anexoId) => {
     if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
     try {
-      const response = await fetch(getApiUrl(`/anexos/${anexoId}`), {
+      const response = await fetchWithAuth(`/anexos/${anexoId}`, {
         method: "DELETE",
         credentials: "include",
       });

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import "../css/App.css";
 import "../css/Login.css";
 
@@ -12,7 +12,7 @@ const RecuperarSenhaPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(getApiUrl("/recuperar-senha"), {
+      const response = await fetchWithAuth("/recuperar-senha", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

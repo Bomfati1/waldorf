@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import { useNavigate, useParams } from "react-router-dom";
 import jsPDF from "jspdf";
 import SelectWithHint from "../components/SelectWithHint";
@@ -32,7 +32,7 @@ const HistoricoAlunoPresencaPage = () => {
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
-        const response = await fetch(getApiUrl("/turmas"), {
+        const response = await fetchWithAuth("/turmas", {
           credentials: "include",
         });
         if (!response.ok) throw new Error("Erro ao buscar turmas");
@@ -107,18 +107,12 @@ const HistoricoAlunoPresencaPage = () => {
       try {
         // Buscar histórico completo da turma e informações básicas
         const [historicoRes, turmaRes] = await Promise.all([
-          fetch(
-            getApiUrl(`/turmas/${selectedTurma}/historico-presenca`),
-            {
-              credentials: "include",
-            }
-          ),
-          fetch(
-            getApiUrl(`/turmas/${selectedTurma}/detalhes-presenca`),
-            {
-              credentials: "include",
-            }
-          ),
+          fetchWithAuth(`/turmas/${selectedTurma}/historico-presenca`, {
+            credentials: "include",
+          }),
+          fetchWithAuth(`/turmas/${selectedTurma}/detalhes-presenca`, {
+            credentials: "include",
+          }),
         ]);
 
         if (!historicoRes.ok || !turmaRes.ok) {

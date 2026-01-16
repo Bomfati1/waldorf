@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getApiUrl, API_URL } from "../config/api";
+import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import EditAlunoModal from "../components/EditAlunoModal";
 
 const AlunoPerfilPage = () => {
@@ -17,10 +17,10 @@ const AlunoPerfilPage = () => {
     setError("");
     try {
       const [detRes, turRes] = await Promise.all([
-        fetch(getApiUrl(`/alunos/${alunoId}/detalhes`), {
+        fetchWithAuth(`/alunos/${alunoId}/detalhes`, {
           credentials: "include",
         }),
-        fetch(getApiUrl("/turmas"), { credentials: "include" }),
+        fetchWithAuth("/turmas", { credentials: "include" }),
       ]);
       if (!detRes.ok) throw new Error("Falha ao carregar dados do aluno");
       if (!turRes.ok) throw new Error("Falha ao carregar turmas");
@@ -41,15 +41,12 @@ const AlunoPerfilPage = () => {
 
   const handleSave = async (updatedData) => {
     try {
-      const resp = await fetch(
-        getApiUrl(`/alunos/${updatedData.aluno_id}`),
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedData),
-        }
-      );
+      const resp = await fetchWithAuth(`/alunos/${updatedData.aluno_id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedData),
+      });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Falha ao salvar");
       setIsEditOpen(false);

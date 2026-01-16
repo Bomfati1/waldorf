@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import InputWithHint from "../components/InputWithHint";
 import ModalBase from "../components/ModalBase";
 import EditAlunoModal from "../components/EditAlunoModal";
@@ -426,7 +426,7 @@ const ResponsaveisPage = () => {
     const fetchResponsaveis = async () => {
       try {
         // Vamos assumir que a rota no seu backend será /responsaveis
-        const response = await fetch(getApiUrl("/responsaveis"), {
+        const response = await fetchWithAuth("/responsaveis", {
           credentials: "include",
         });
         if (!response.ok) {
@@ -443,7 +443,7 @@ const ResponsaveisPage = () => {
 
     const fetchTurmas = async () => {
       try {
-        const response = await fetch(getApiUrl("/turmas"), {
+        const response = await fetchWithAuth("/turmas", {
           credentials: "include",
         });
         if (response.ok) {
@@ -469,7 +469,7 @@ const ResponsaveisPage = () => {
     }
 
     try {
-      const response = await fetch(getApiUrl(`/responsaveis/${id}`), {
+      const response = await fetchWithAuth(`/responsaveis/${id}`, {
         method: "DELETE",
       });
 
@@ -495,10 +495,9 @@ const ResponsaveisPage = () => {
 
   const handleAlunoClick = async (alunoId) => {
     try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoId}/detalhes`),
-        { credentials: "include" }
-      );
+      const response = await fetchWithAuth(`/alunos/${alunoId}/detalhes`, {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         setSelectedAluno(data);

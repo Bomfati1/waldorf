@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_URL } from "../config/api";
+import { API_URL, getAuthHeaders } from "../config/api";
 
 const ImportExcel = ({
   endpoint,
@@ -62,8 +62,16 @@ const ImportExcel = ({
     formData.append(fieldName, file);
 
     try {
+      const token = localStorage.getItem('token');
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
+        headers,
+        credentials: "include",
         body: formData,
       });
 

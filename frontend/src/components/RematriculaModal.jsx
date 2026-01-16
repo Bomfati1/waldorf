@@ -122,7 +122,7 @@ const RematriculaModal = ({
       <div
         className="modal-content modal-large"
         onClick={(e) => e.stopPropagation()}
-        style={{ position: 'relative', zIndex: 100000 }}
+        style={{ position: "relative", zIndex: 100000 }}
       >
         {/* Header Fixo */}
         <div className="modal-header">

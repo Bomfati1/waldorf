@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl, API_URL } from "../config/api";
+import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import { useModal } from "../context/ModalContext";
 import EditAlunoModal from "../components/EditAlunoModal";
 import ModalBase from "../components/ModalBase";
@@ -24,7 +24,7 @@ const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
-        const response = await fetch(getApiUrl("/turmas"), {
+        const response = await fetchWithAuth("/turmas", {
           credentials: "include",
         });
         if (!response.ok) throw new Error("Falha ao buscar turmas.");
@@ -171,13 +171,13 @@ const AlunosPage = () => {
     try {
       // Usando Promise.all para buscar alunos e turmas em paralelo
       const [ativosRes, inativosRes, turmasRes] = await Promise.all([
-        fetch(getApiUrl("/alunos/ativos"), {
+        fetchWithAuth("/alunos/ativos", {
           credentials: "include",
         }),
-        fetch(getApiUrl("/alunos/inativos"), {
+        fetchWithAuth("/alunos/inativos", {
           credentials: "include",
         }),
-        fetch(getApiUrl("/turmas"), {
+        fetchWithAuth("/turmas", {
           credentials: "include",
         }),
       ]);
@@ -254,12 +254,9 @@ const AlunosPage = () => {
 
   const handleOpenEditModal = async (alunoId) => {
     try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoId}/detalhes`),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await fetchWithAuth(`/alunos/${alunoId}/detalhes`, {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("Falha ao buscar detalhes do aluno.");
       const data = await response.json();
       setEditingAluno(data);
@@ -303,15 +300,12 @@ const AlunosPage = () => {
       return;
     }
     try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoId}/matricular`),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ turmaId }),
-        }
-      );
+      const response = await fetchWithAuth(`/alunos/${alunoId}/matricular`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ turmaId }),
+      });
       const result = await response.json();
       if (!response.ok)
         throw new Error(result.error || "Falha ao matricular o aluno.");
@@ -333,13 +327,10 @@ const AlunosPage = () => {
 
     if (userConfirmed) {
       try {
-        const response = await fetch(
-          getApiUrl(`/alunos/${alunoId}`),
-          {
-            method: "DELETE",
-            credentials: "include",
-          }
-        );
+        const response = await fetchWithAuth(`/alunos/${alunoId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
 
         if (!response.ok) {
           const data = await response.json();

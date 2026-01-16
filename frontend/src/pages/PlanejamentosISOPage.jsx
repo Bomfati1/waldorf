@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import PlanejamentoISOMensal from "../components/PlanejamentoISOMensal";
 import SelectWithHint from "../components/SelectWithHint";
 import "../css/PlanejamentosISOPage.css";
@@ -21,7 +21,7 @@ const PlanejamentosISOPage = () => {
   const fetchTurmas = async () => {
     console.log("📡 [PLANEJAMENTOS-ISO] Buscando turmas...");
     try {
-      const response = await fetch(getApiUrl("/turmas"), {
+      const response = await fetchWithAuth("/turmas", {
         credentials: "include",
       });
 

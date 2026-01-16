@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getApiUrl, API_URL } from "../config/api";
+import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import ListaComentarios from "./ListaComentarios";
 import { useAuth } from "../context/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -114,7 +114,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
   const handleDeleteAttachment = async (anexoId) => {
     if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
     try {
-      const response = await fetch(getApiUrl(`/anexos/${anexoId}`), {
+      const response = await fetchWithAuth(`/anexos/${anexoId}`, {
         method: "DELETE",
         credentials: "include",
       });

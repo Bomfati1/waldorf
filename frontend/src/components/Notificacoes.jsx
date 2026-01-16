@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import "../css/Notificacoes.css";
 
 const Notificacoes = () => {
@@ -15,7 +15,7 @@ const Notificacoes = () => {
   const buscarNotificacoes = async () => {
     console.log("🔔 [FRONTEND] Iniciando busca de notificações...");
     try {
-      const response = await fetch(getApiUrl("/notificacoes"), {
+      const response = await fetchWithAuth("/notificacoes", {
         credentials: "include",
       });
       console.log("📡 [FRONTEND] Response status:", response.status);
@@ -60,12 +60,9 @@ const Notificacoes = () => {
   // Buscar contador de não lidas
   const buscarContador = async () => {
     try {
-      const response = await fetch(
-        getApiUrl("/notificacoes/nao-lidas/count"),
-        {
-          credentials: "include",
-        }
-      );
+      const response = await fetchWithAuth("/notificacoes/nao-lidas/count", {
+        credentials: "include",
+      });
 
       if (response.status === 401) {
         console.warn("🔐 [FRONTEND] Usuário não autenticado - contador zerado");
@@ -85,13 +82,10 @@ const Notificacoes = () => {
   // Marcar notificação como lida
   const marcarComoLida = async (id) => {
     try {
-      const response = await fetch(
-        getApiUrl(`/notificacoes/${id}/ler`),
-        {
-          method: "PATCH",
-          credentials: "include",
-        }
-      );
+      const response = await fetchWithAuth(`/notificacoes/${id}/ler`, {
+        method: "PATCH",
+        credentials: "include",
+      });
       if (response.ok) {
         buscarNotificacoes();
       }
@@ -104,13 +98,10 @@ const Notificacoes = () => {
   const marcarTodasLidas = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        getApiUrl("/notificacoes/ler-todas"),
-        {
-          method: "PATCH",
-          credentials: "include",
-        }
-      );
+      const response = await fetchWithAuth("/notificacoes/ler-todas", {
+        method: "PATCH",
+        credentials: "include",
+      });
       if (response.ok) {
         buscarNotificacoes();
       }
@@ -125,7 +116,7 @@ const Notificacoes = () => {
   const deletarNotificacao = async (id, event) => {
     event.stopPropagation();
     try {
-      const response = await fetch(getApiUrl(`/notificacoes/${id}`), {
+      const response = await fetchWithAuth(`/notificacoes/${id}`, {
         method: "DELETE",
         credentials: "include",
       });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl, fetchWithAuth } from "../config/api";
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
 import "../css/FormLayout.css";
@@ -25,12 +25,9 @@ const CadastrarTurmaPage = () => {
     const fetchProfessores = async () => {
       setProfessoresLoading(true);
       try {
-        const response = await fetch(
-          getApiUrl("/usuarios/professores"),
-          {
-            credentials: "include",
-          }
-        );
+        const response = await fetchWithAuth("/usuarios/professores", {
+          credentials: "include",
+        });
         if (!response.ok) {
           // Tenta extrair uma mensagem de erro mais específica do backend
           let errorMsg = `Erro HTTP ${response.status}: Falha na comunicação com o servidor.`;
@@ -79,7 +76,7 @@ const CadastrarTurmaPage = () => {
     };
 
     try {
-      const response = await fetch(getApiUrl("/turmas"), {
+      const response = await fetchWithAuth("/turmas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

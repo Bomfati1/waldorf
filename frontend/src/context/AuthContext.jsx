@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getApiUrl } from '../config/api';
+import { getApiUrl, fetchWithAuth } from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
         // Só verifica no backend se houver token
         if (token) {
           // Depois verifica se o token no backend ainda é válido
-          const response = await fetch(getApiUrl('/auth/me'), {
+          const response = await fetchWithAuth('/auth/me', {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem("token");
       // Chama o backend para limpar o cookie
-      await fetch(getApiUrl('/logout'), {
+      await fetchWithAuth('/logout', {
         method: "POST",
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
