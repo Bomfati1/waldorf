@@ -1,6 +1,6 @@
 // src/pages/PreMatriculaPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { getApiUrl } from "../../config/api";
+import { getApiUrl } from "../config/api";
 import InteressadosDashboardPage from "./InteressadosDashboardPage"; // Importa o componente do dashboard
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
