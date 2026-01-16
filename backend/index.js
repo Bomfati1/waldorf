@@ -2568,7 +2568,8 @@ app.get("/alunos/ativos", authenticateToken, async (req, res) => {
         a.id, a.nome_completo, a.data_nascimento, a.status_pagamento, a.status_aluno, a.foto_perfil,
         ta.turma_id,
         t.nome_turma,
-        t.ano_letivo
+        t.ano_letivo,
+        t.nivel
        FROM alunos a
        LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
        LEFT JOIN turmas t ON ta.turma_id = t.id AND t.ano_letivo = $1
@@ -2591,7 +2592,8 @@ app.get("/alunos/inativos", authenticateToken, async (req, res) => {
         a.id, a.nome_completo, a.data_nascimento, a.status_pagamento, a.status_aluno, a.foto_perfil,
         ta.turma_id,
         t.nome_turma,
-        t.ano_letivo
+        t.ano_letivo,
+        t.nivel
        FROM alunos a
        LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
        LEFT JOIN turmas t ON ta.turma_id = t.id AND t.ano_letivo = $1

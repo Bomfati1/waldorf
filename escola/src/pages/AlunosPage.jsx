@@ -160,6 +160,7 @@ const AlunosPage = () => {
     pagamento: "",
     turmaId: "",
     status: "",
+    nivel: "",
   });
 
   // Função para buscar todos os dados necessários
@@ -188,8 +189,12 @@ const AlunosPage = () => {
       const inativosData = await inativosRes.json();
       const turmasData = await turmasRes.json();
 
-      // Combina os alunos ativos e inativos em uma única lista
-      setAlunos([...ativosData, ...inativosData]);
+      // Combina os alunos ativos e inativos em uma única lista e ordena alfabeticamente
+      const todosAlunos = [...ativosData, ...inativosData].sort((a, b) =>
+        a.nome_completo.localeCompare(b.nome_completo, "pt-BR")
+      );
+      
+      setAlunos(todosAlunos);
       setTurmas(turmasData);
     } catch (err) {
       setError(err.message);
@@ -218,7 +223,10 @@ const AlunosPage = () => {
             String(aluno.turma_id) === filters.turmaId);
         const statusMatch =
           !filters.status || aluno.status_aluno == filters.status;
-        return nomeMatch && pagamentoMatch && turmaMatch && statusMatch;
+        const nivelMatch = !filters.nivel || aluno.nivel === filters.nivel;
+        return (
+          nomeMatch && pagamentoMatch && turmaMatch && statusMatch && nivelMatch
+        );
       })
       .sort((a, b) => {
         // Ordenação alfabética por nome completo
@@ -232,7 +240,7 @@ const AlunosPage = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ nome: "", pagamento: "", turmaId: "", status: "" });
+    setFilters({ nome: "", pagamento: "", turmaId: "", status: "", nivel: "" });
   };
 
   const formatDate = (dateString) => {
@@ -410,6 +418,20 @@ const AlunosPage = () => {
                 {turma.nome_turma} ({turma.periodo})
               </option>
             ))}
+          </SelectWithHint>
+        </div>
+        <div className="filter-item">
+          <SelectWithHint
+            label="Nível de Ensino"
+            hint="Filtre por nível de ensino: Maternal (1-3 anos), Jardim (4-6 anos) ou Fundamental (7+ anos)"
+            name="nivel"
+            value={filters.nivel}
+            onChange={handleFilterChange}
+          >
+            <option value="">Todos os Níveis</option>
+            <option value="maternal">👶 Maternal</option>
+            <option value="jardim">🌱 Jardim</option>
+            <option value="fundamental">📚 Fundamental</option>
           </SelectWithHint>
         </div>
         <button onClick={clearFilters} className="clear-filters-button">

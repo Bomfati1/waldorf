@@ -12,6 +12,20 @@ dist
 dist-ssr
 *.local
 
+# Environment variables - CRÍTICO!
+.env
+.env.*
+*.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads (dados sensíveis)
+uploads/
+uploads/**/*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
