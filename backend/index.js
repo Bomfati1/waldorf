@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
-const dbPromise = require("./db");
+const db = require("./db");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -17,16 +17,7 @@ const swaggerDocument = YAML.load(path.join(__dirname, "doc", "swagger.yaml"));
 
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-
-// db agora é uma promise, vamos inicializar depois
-let db;
-dbPromise.then(pool => {
-  db = pool;
-  console.log('✅ Banco de dados conectado');
-}).catch(err => {
-  console.error('❌ Erro ao conectar ao banco:', err);
-  process.exit(1);
-});
+const pool = require("./db");
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "sua_chave_secreta_muito_segura_aqui_2024";
