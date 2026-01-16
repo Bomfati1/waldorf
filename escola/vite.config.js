@@ -12,7 +12,6 @@ export default defineConfig({
   },
   // Configurar PostCSS para autoprefixer
   css: {
-    postcss: "../postcss.config.js",
     devSourcemap: true,
   },
   // Otimizações de build
