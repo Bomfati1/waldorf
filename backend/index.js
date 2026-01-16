@@ -58,7 +58,8 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
+    exposedHeaders: ["Authorization"],
   })
 );
 app.use(express.json());
@@ -210,34 +211,43 @@ app.post("/login", async (req, res) => {
 const authenticateToken = (req, res, next) => {
   console.log("\n🔐 [AUTH] Verificando autenticação...");
   console.log("📍 [AUTH] Rota:", req.method, req.path);
-  console.log("🔑 [AUTH] Headers:", JSON.stringify(req.headers.authorization?.substring(0, 50)));
   
   // Tenta pegar o token do header Authorization primeiro
-  const authHeader = req.headers.authorization;
-  let token =
-    authHeader && authHeader.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : null;
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  console.log("🔑 [AUTH] Authorization Header:", authHeader ? authHeader.substring(0, 50) + "..." : "Não encontrado");
+  
+  let token = null;
+  
+  if (authHeader) {
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+      console.log("✅ [AUTH] Token extraído do header Bearer");
+    } else {
+      // Tenta usar diretamente como token
+      token = authHeader;
+      console.log("⚠️ [AUTH] Header sem 'Bearer', usando valor direto");
+    }
+  }
 
   // Se não tiver no header, tenta pegar do cookie
   if (!token) {
     token = req.cookies.authToken;
     console.log("🍪 [AUTH] Tentando cookie:", token ? "Encontrado" : "Não encontrado");
-  } else {
-    console.log("✅ [AUTH] Token encontrado no header");
   }
 
   if (!token) {
-    console.log("❌ [AUTH] Token não fornecido");
+    console.log("❌ [AUTH] Token não fornecido - rejeitando requisição");
     return res.status(401).json({ error: "Token não fornecido" });
   }
 
+  console.log("🔍 [AUTH] Validando token com JWT_SECRET...");
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       console.log("❌ [AUTH] Token inválido:", err.message);
+      console.log("❌ [AUTH] Detalhes do erro:", err.name);
       return res.status(403).json({ error: "Token inválido ou expirado" });
     }
-    console.log("✅ [AUTH] Token válido - Usuário:", user.userId, user.email);
+    console.log("✅ [AUTH] Token válido - Usuário:", user.userId, user.email, "Cargo:", user.cargo);
     req.user = user;
     next();
   });
