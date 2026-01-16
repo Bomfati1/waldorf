@@ -1,6 +1,6 @@
 {
-  "framework": "vite",
-  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "echo 'skip'"
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "vite"
 }
