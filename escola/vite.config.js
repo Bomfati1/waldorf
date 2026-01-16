@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import autoprefixer from "autoprefixer";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,9 +11,24 @@ export default defineConfig({
     cors: true,
     strictPort: false,
   },
-  // Configurar PostCSS para autoprefixer
+  // Configurar PostCSS inline
   css: {
-    postcss: "../postcss.config.js",
+    postcss: {
+      plugins: [
+        autoprefixer({
+          overrideBrowserslist: [
+            "> 1%",
+            "last 2 versions",
+            "not dead",
+            "Safari >= 9",
+            "iOS >= 9",
+            "Chrome >= 60",
+            "Firefox >= 60",
+            "Edge >= 15",
+          ],
+        }),
+      ],
+    },
     devSourcemap: true,
   },
   // Otimizações de build
