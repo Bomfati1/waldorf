@@ -12,6 +12,8 @@ if (DATABASE_URL) {
   poolConfig = {
     connectionString: DATABASE_URL,
     ssl: PGSSL ? { rejectUnauthorized: false } : undefined,
+    // Forçar IPv4 para evitar erro ENETUNREACH em IPv6
+    family: 4,
   };
 } else {
   const missing = [
@@ -36,6 +38,8 @@ if (DATABASE_URL) {
     password: PGPASSWORD,
     database: PGDATABASE,
     ssl: PGSSL ? { rejectUnauthorized: false } : undefined,
+    // Forçar IPv4 para evitar erro ENETUNREACH em IPv6
+    family: 4,
   };
 }
 
