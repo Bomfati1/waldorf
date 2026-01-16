@@ -2,45 +2,42 @@
 const { Pool } = require("pg");
 
 // Permite configuração por variáveis de ambiente (.env)
-// Suporta tanto parâmetros individuais quanto DATABASE_URL inteira
 const { DATABASE_URL, PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, PGSSL } =
   process.env;
 
 let poolConfig;
 
-if (DATABASE_URL) {
-  poolConfig = {
-    connectionString: DATABASE_URL,
-    ssl: PGSSL ? { rejectUnauthorized: false } : undefined,
-    // Forçar IPv4 para evitar erro ENETUNREACH em IPv6
-    family: 4,
-  };
-} else {
-  const missing = [
-    "PGHOST",
-    "PGPORT",
-    "PGUSER",
-    "PGPASSWORD",
-    "PGDATABASE",
-  ].filter((k) => !process.env[k]);
-  if (missing.length) {
-    throw new Error(
-      `Variáveis de ambiente ausentes: ${missing.join(
-        ", "
-      )} (ou defina DATABASE_URL)`
-    );
-  }
-
+// Sempre usar parâmetros individuais para forçar IPv4
+if (PGHOST && PGPORT && PGUSER && PGPASSWORD && PGDATABASE) {
   poolConfig = {
     host: PGHOST,
     port: parseInt(PGPORT, 10),
     user: PGUSER,
     password: PGPASSWORD,
     database: PGDATABASE,
-    ssl: PGSSL ? { rejectUnauthorized: false } : undefined,
+    ssl: PGSSL === 'true' ? { rejectUnauthorized: false } : false,
     // Forçar IPv4 para evitar erro ENETUNREACH em IPv6
     family: 4,
   };
+} else if (DATABASE_URL) {
+  // Parse DATABASE_URL manualmente para usar family: 4
+  const url = new URL(DATABASE_URL);
+  poolConfig = {
+    host: url.hostname,
+    port: parseInt(url.port, 10),
+    user: url.username,
+    password: url.password,
+    database: url.pathname.slice(1),
+    ssl: PGSSL === 'true' || url.searchParams.get('sslmode') === 'require' 
+      ? { rejectUnauthorized: false } 
+      : false,
+    // Forçar IPv4 para evitar erro ENETUNREACH em IPv6
+    family: 4,
+  };
+} else {
+  throw new Error(
+    'Variáveis de ambiente ausentes: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE (ou defina DATABASE_URL)'
+  );
 }
 
 // Cria uma nova instância do Pool com as configurações de conexão
