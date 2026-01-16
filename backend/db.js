@@ -1,5 +1,9 @@
 // Importa a classe Pool da biblioteca 'pg'
 const { Pool } = require("pg");
+const dns = require('dns');
+
+// Forçar DNS para IPv4 primeiro
+dns.setDefaultResultOrder('ipv4first');
 
 // Permite configuração por variáveis de ambiente (.env)
 const { DATABASE_URL, PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, PGSSL } =
@@ -24,13 +28,11 @@ if (PGHOST && PGPORT && PGUSER && PGPASSWORD && PGDATABASE) {
   const url = new URL(DATABASE_URL);
   poolConfig = {
     host: url.hostname,
-    port: parseInt(url.port, 10),
+    port: parseInt(url.port, 10) || 5432,
     user: url.username,
     password: url.password,
     database: url.pathname.slice(1),
-    ssl: PGSSL === 'true' || url.searchParams.get('sslmode') === 'require' 
-      ? { rejectUnauthorized: false } 
-      : false,
+    ssl: { rejectUnauthorized: false },
     // Forçar IPv4 para evitar erro ENETUNREACH em IPv6
     family: 4,
   };
