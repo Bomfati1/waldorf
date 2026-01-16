@@ -2769,9 +2769,13 @@ app.post("/alunos/:alunoId/matricular", async (req, res) => {
 });
 
 // Rota para DELETAR um aluno
-app.delete("/alunos/:id", async (req, res) => {
+app.delete("/alunos/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const alunoId = parseInt(id, 10);
+  
+  console.log("\n🗑️ [DELETE ALUNO] Tentando excluir aluno ID:", alunoId);
+  console.log("👤 [DELETE ALUNO] Usuário:", req.user.email, req.user.cargo);
+  
   if (!Number.isInteger(alunoId)) {
     return res.status(400).json({ error: "ID de aluno inválido." });
   }
@@ -2856,8 +2860,13 @@ app.delete("/alunos/:id", async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Erro ao excluir aluno e família:", err.message);
-    res.status(500).json({ error: "Erro interno ao excluir o aluno." });
+    console.error("❌ [DELETE ALUNO] Erro ao excluir aluno:", err.message);
+    console.error("❌ [DELETE ALUNO] Stack:", err.stack);
+    console.error("❌ [DELETE ALUNO] Código:", err.code);
+    res.status(500).json({ 
+      error: "Erro interno ao excluir o aluno.",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   } finally {
     client.release();
   }
