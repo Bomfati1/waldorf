@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd escola && npm install && npm run build",
+  "buildCommand": "cd escola && npm run build",
   "outputDirectory": "escola/dist",
-  "installCommand": "cd escola && npm install",
+  "installCommand": "cd escola && npm install --legacy-peer-deps",
   "framework": "vite"
 }
