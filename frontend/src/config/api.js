@@ -1,11 +1,15 @@
 import axios from 'axios';
 
 // Configuração da API
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Remove trailing slash se existir
+const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+export const API_URL = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
 // Helper para construir URLs de API
 export const getApiUrl = (path) => {
-  return `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  // Garante que o path começa com / mas não duplica
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_URL}${normalizedPath}`;
 };
 
 // Instância do axios com configurações padrão
