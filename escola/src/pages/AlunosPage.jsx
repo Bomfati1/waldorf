@@ -193,7 +193,7 @@ const AlunosPage = () => {
       const todosAlunos = [...ativosData, ...inativosData].sort((a, b) =>
         a.nome_completo.localeCompare(b.nome_completo, "pt-BR")
       );
-      
+
       setAlunos(todosAlunos);
       setTurmas(turmasData);
     } catch (err) {
