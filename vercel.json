@@ -1,6 +1,18 @@
 {
-  "buildCommand": "cd escola && npm run build",
-  "outputDirectory": "escola/dist",
-  "installCommand": "cd escola && npm install --legacy-peer-deps",
-  "framework": "vite"
+  "version": 2,
+  "builds": [
+    {
+      "src": "escola/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/escola/$1"
+    }
+  ]
 }
