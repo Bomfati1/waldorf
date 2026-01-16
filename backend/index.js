@@ -29,6 +29,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
+  "https://waldorf-git-main-bomfas-projects.vercel.app",
+  "https://waldorf.vercel.app",
 ];
 
 // Adiciona URL da Vercel se configurada
@@ -38,8 +40,25 @@ if (process.env.VERCEL_URL) {
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      // Permite requisições sem origin (ex: Postman, mobile apps)
+      if (!origin) return callback(null, true);
+      
+      // Permite qualquer subdomínio da Vercel
+      if (origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Verifica se a origin está na lista permitida
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
   })
 );
 app.use(express.json());
