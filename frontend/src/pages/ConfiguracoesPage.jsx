@@ -67,7 +67,7 @@ function ConfiguracoesPage() {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:3001/usuarios", {
+      const response = await fetch(getApiUrl("/usuarios"), {
         credentials: "include",
       });
       if (!response.ok) {
@@ -122,7 +122,7 @@ function ConfiguracoesPage() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:3001/register", {
+      const response = await fetch(getApiUrl("/register"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +157,7 @@ function ConfiguracoesPage() {
     if (window.confirm("Tem certeza que deseja remover este membro?")) {
       try {
         const response = await fetch(
-          `http://localhost:3001/usuarios/${memberId}`,
+          getApiUrl(`/usuarios/${memberId}`),
           {
             method: "DELETE",
             credentials: "include",

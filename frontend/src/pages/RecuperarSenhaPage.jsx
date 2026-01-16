@@ -11,7 +11,7 @@ const RecuperarSenhaPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:3001/recuperar-senha", {
+      const response = await fetch(getApiUrl("/recuperar-senha"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

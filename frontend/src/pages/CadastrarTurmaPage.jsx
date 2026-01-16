@@ -25,7 +25,7 @@ const CadastrarTurmaPage = () => {
       setProfessoresLoading(true);
       try {
         const response = await fetch(
-          "http://localhost:3001/usuarios/professores",
+          getApiUrl("/usuarios/professores"),
           {
             credentials: "include",
           }
@@ -78,7 +78,7 @@ const CadastrarTurmaPage = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:3001/turmas", {
+      const response = await fetch(getApiUrl("/turmas"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

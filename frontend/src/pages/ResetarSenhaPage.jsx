@@ -36,7 +36,7 @@ const ResetarSenhaPage = () => {
     }
 
     try {
-      const resp = await fetch("http://localhost:3001/resetar-senha", {
+      const resp = await fetch(getApiUrl("/resetar-senha"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),

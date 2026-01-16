@@ -131,7 +131,7 @@ const EditarResponsavelPage = () => {
     const fetchResponsavel = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3001/responsaveis/${id}`,
+          getApiUrl(`/responsaveis/${id}`),
           {
             credentials: "include",
           }
@@ -198,7 +198,7 @@ const EditarResponsavelPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:3001/responsaveis/${id}`, {
+      const response = await fetch(getApiUrl(`/responsaveis/${id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

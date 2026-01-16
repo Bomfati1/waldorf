@@ -2,7 +2,7 @@
 // Loads the Waldorf logo from backend uploads and converts to a PNG data URL for jsPDF
 
 const LOGO_URL =
-  "http://localhost:3001/uploads/aluno_image/bf-fundo-trasnparente-pequeno-YNqrBazK8rUMjRGQ.avif";
+  getApiUrl("/uploads/aluno_image/bf-fundo-trasnparente-pequeno-YNqrBazK8rUMjRGQ.avif");
 
 let cachedLogoDataUrl = null;
 let cachedLogoPromise = null;

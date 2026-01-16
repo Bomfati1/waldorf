@@ -61,7 +61,7 @@ const ResponsavelCPF = ({
     console.log("🔍 [ResponsavelCPF] Buscando CPF:", cpfLimpo);
 
     try {
-      const url = `http://localhost:3001/responsaveis/buscar-por-cpf/${cpfLimpo}`;
+      const url = getApiUrl(`/responsaveis/buscar-por-cpf/${cpfLimpo}`);
       console.log("🌐 [ResponsavelCPF] URL da requisição:", url);
 
       const response = await fetch(url, {

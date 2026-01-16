@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getApiUrl } from "../../config/api";
 import "../css/RelatoriosPage.css";
 
 const RelatoriosPage = () => {
@@ -22,7 +23,7 @@ const RelatoriosPage = () => {
   const fetchRelatorios = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/relatorios", {
+      const response = await fetch(getApiUrl("/relatorios"), {
         credentials: "include"
       });
       if (!response.ok) {
@@ -45,7 +46,7 @@ const RelatoriosPage = () => {
     const fetchAlunos = async () => {
       try {
         console.log("Buscando alunos ativos...");
-        const res = await fetch("http://localhost:3001/alunos/ativos-simples", {
+        const res = await fetch(getApiUrl("/alunos/ativos-simples"), {
           credentials: "include"
         });
         console.log("Resposta da busca de alunos:", res.status, res.statusText);
@@ -65,7 +66,7 @@ const RelatoriosPage = () => {
     const fetchTurmas = async () => {
       try {
         console.log("Buscando turmas...");
-        const res = await fetch("http://localhost:3001/turmas", {
+        const res = await fetch(getApiUrl("/turmas"), {
           credentials: "include"
         });
         console.log("Resposta da busca de turmas:", res.status, res.statusText);
@@ -118,7 +119,7 @@ const RelatoriosPage = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:3001/relatorios/upload", {
+      const response = await fetch(getApiUrl("/relatorios/upload"), {
         method: "POST",
         body: formData,
         credentials: "include"
@@ -147,7 +148,7 @@ const RelatoriosPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/relatorios/${id}`, {
+      const response = await fetch(getApiUrl(`/relatorios/${id}`), {
         method: "DELETE",
         credentials: "include"
       });
@@ -327,7 +328,7 @@ const RelatoriosPage = () => {
                     <td>{formatDate(relatorio.data_upload)}</td>
                     <td>
                       <a
-                        href={`http://localhost:3001/${relatorio.caminho_arquivo}`}
+                        href={getApiUrl(`/${relatorio.caminho_arquivo}`)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="action-button"

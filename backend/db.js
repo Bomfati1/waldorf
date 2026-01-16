@@ -1,9 +1,9 @@
 // Importa a classe Pool da biblioteca 'pg'
 const { Pool } = require("pg");
-const dns = require('dns');
+const dns = require("dns");
 
 // Forçar DNS para IPv4 primeiro
-dns.setDefaultResultOrder('ipv4first');
+dns.setDefaultResultOrder("ipv4first");
 
 // Permite configuração por variáveis de ambiente (.env)
 const { DATABASE_URL, PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, PGSSL } =
@@ -19,7 +19,7 @@ if (PGHOST && PGPORT && PGUSER && PGPASSWORD && PGDATABASE) {
     user: PGUSER,
     password: PGPASSWORD,
     database: PGDATABASE,
-    ssl: PGSSL === 'true' ? { rejectUnauthorized: false } : false,
+    ssl: PGSSL === "true" ? { rejectUnauthorized: false } : false,
   };
 } else if (DATABASE_URL) {
   // Parse DATABASE_URL manualmente
@@ -34,30 +34,30 @@ if (PGHOST && PGPORT && PGUSER && PGPASSWORD && PGDATABASE) {
   };
 } else {
   throw new Error(
-    'Variáveis de ambiente ausentes: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE (ou defina DATABASE_URL)'
+    "Variáveis de ambiente ausentes: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE (ou defina DATABASE_URL)"
   );
 }
 
 // Log da configuração antes de criar o pool
-console.log('🔧 Configuração do Pool PostgreSQL:');
-console.log('   Host:', poolConfig.host);
-console.log('   Port:', poolConfig.port);
-console.log('   User:', poolConfig.user);
-console.log('   Database:', poolConfig.database);
-console.log('   SSL:', poolConfig.ssl ? 'Habilitado' : 'Desabilitado');
+console.log("🔧 Configuração do Pool PostgreSQL:");
+console.log("   Host:", poolConfig.host);
+console.log("   Port:", poolConfig.port);
+console.log("   User:", poolConfig.user);
+console.log("   Database:", poolConfig.database);
+console.log("   SSL:", poolConfig.ssl ? "Habilitado" : "Desabilitado");
 
 // Cria uma nova instância do Pool com as configurações de conexão
 const pool = new Pool(poolConfig);
 
 // Log de conexão bem-sucedida
-pool.on('connect', () => {
-  console.log('✅ Nova conexão estabelecida com PostgreSQL');
+pool.on("connect", () => {
+  console.log("✅ Nova conexão estabelecida com PostgreSQL");
 });
 
-pool.on('error', (err) => {
-  console.error('❌ Erro inesperado no pool de conexão:', err);
-  console.error('   Código do erro:', err.code);
-  console.error('   Mensagem:', err.message);
+pool.on("error", (err) => {
+  console.error("❌ Erro inesperado no pool de conexão:", err);
+  console.error("   Código do erro:", err.code);
+  console.error("   Mensagem:", err.message);
 });
 
 // Exporta o pool diretamente.

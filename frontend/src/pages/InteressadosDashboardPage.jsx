@@ -38,7 +38,7 @@ const InteressadosDashboardPage = ({ isEmbedded = false }) => {
       setError(null);
       try {
         const response = await fetch(
-          "http://localhost:3001/interessados/dashboard-summary",
+          getApiUrl("/interessados/dashboard-summary"),
           {
             credentials: "include",
           }

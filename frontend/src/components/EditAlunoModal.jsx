@@ -62,7 +62,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     const fetchResponsaveis = async () => {
       try {
         const res = await fetch(
-          `http://localhost:3001/alunos/${alunoData.aluno_id}/responsaveis`,
+          getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis`),
           { credentials: "include" }
         );
         if (res.ok) {
@@ -81,7 +81,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     const fetchAnexos = async () => {
       try {
         const res = await fetch(
-          `http://localhost:3001/alunos/${alunoData.aluno_id}/anexos`,
+          getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
           { credentials: "include" }
         );
         if (res.ok) {
@@ -124,7 +124,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/upload-photo`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/upload-photo`),
         {
           method: "POST",
           body: uploadFormData,
@@ -163,7 +163,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/remove-photo`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/remove-photo`),
         {
           method: "DELETE",
           credentials: "include",
@@ -217,7 +217,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   const refetchAlunoDetalhes = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/detalhes`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/detalhes`),
         { credentials: "include" }
       );
       if (response.ok) {
@@ -232,7 +232,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   const refetchResponsaveis = async () => {
     try {
       const res = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/responsaveis`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis`),
         { credentials: "include" }
       );
       if (res.ok) {
@@ -248,7 +248,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     if (!respSelection.familiaId) return;
     try {
       const resp = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/vincular-responsavel`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/vincular-responsavel`),
         {
           method: "POST",
           credentials: "include",
@@ -274,7 +274,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     if (!familiaId) return;
     try {
       const resp = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/vincular-responsavel`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/vincular-responsavel`),
         {
           method: "POST",
           credentials: "include",
@@ -304,7 +304,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     }
     try {
       // Cria o responsável usando os dados do formulário atual
-      const criar = await fetch("http://localhost:3001/responsaveis", {
+      const criar = await fetch(getApiUrl("/responsaveis"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -323,7 +323,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
       // Vincula ao aluno
       setRespSelection((prev) => ({ ...prev, familiaId: novo.id }));
       const vinc = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/vincular-responsavel`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/vincular-responsavel`),
         {
           method: "POST",
           credentials: "include",
@@ -351,7 +351,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     if (!window.confirm("Desvincular este responsável do aluno?")) return;
     try {
       const resp = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/responsaveis/${familiaId}`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis/${familiaId}`),
         { method: "DELETE", credentials: "include" }
       );
       const data = await resp.json();
@@ -383,7 +383,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/anexos`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
         {
           method: "POST",
           body: formData,
@@ -402,7 +402,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
       // Recarregar lista de anexos
       const res = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/anexos`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
         { credentials: "include" }
       );
       if (res.ok) {
@@ -423,7 +423,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/anexos/${anexoId}`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos/${anexoId}`),
         {
           method: "DELETE",
           credentials: "include",
@@ -441,7 +441,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
       // Recarregar lista de anexos
       const res = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/anexos`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
         { credentials: "include" }
       );
       if (res.ok) {
@@ -460,7 +460,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     setGeneratingPDF(true);
     try {
       const resp = await fetch(
-        `http://localhost:3001/alunos/${alunoData.aluno_id}/presencas?ano=${selectedYear}`,
+        getApiUrl(`/alunos/${alunoData.aluno_id}/presencas?ano=${selectedYear}`),
         { credentials: "include" }
       );
       const data = await resp.json();
@@ -734,7 +734,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>
                           <a
-                            href={`http://localhost:3001${anexo.caminho_arquivo}`}
+                            href={`${API_URL}${anexo.caminho_arquivo}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -784,7 +784,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
               <div className="photo-preview">
                 {formData.foto_perfil ? (
                   <img
-                    src={`http://localhost:3001${formData.foto_perfil}`}
+                    src={`${API_URL}${formData.foto_perfil}`}
                     alt="Foto do aluno"
                   />
                 ) : (

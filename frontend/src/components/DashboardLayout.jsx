@@ -3,6 +3,7 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Notificacoes from "./Notificacoes";
 import { useAuth } from "../context/AuthContext"; // Importar o hook de autenticação
+import { API_URL } from "../config/api";
 import "../css/DashboardLayout.css"; // Importa como módulo
 import { NavLink } from "react-router-dom";
 
@@ -48,7 +49,7 @@ const DashboardLayout = () => {
               <div className="profile-pic">
                 {user?.foto_perfil ? (
                   <img
-                    src={`http://localhost:3001${user.foto_perfil}`}
+                    src={`${API_URL}${user.foto_perfil}`}
                     alt="Foto de perfil"
                     className="profile-image"
                   />

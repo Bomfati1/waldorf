@@ -77,7 +77,7 @@ const CadastrarResponsavelPage = () => {
     console.log("📄 [CADASTRO RESPONSÁVEL] Dados:", formData);
 
     try {
-      const response = await fetch("http://localhost:3001/responsaveis", {
+      const response = await fetch(getApiUrl("/responsaveis"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

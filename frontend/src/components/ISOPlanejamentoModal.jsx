@@ -56,7 +56,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
 
   const refetchPlanejamento = async () => {
     const resp = await fetch(
-      `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
+      getApiUrl(`/planejamentos/${localInfo.id_planejamento}`),
       { credentials: "include" }
     );
     if (!resp.ok) throw new Error("Falha ao recarregar planejamento.");
@@ -89,7 +89,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
     formData.append("anexo", selectedFile);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/anexos`,
+        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/anexos`),
         {
           method: "POST",
           credentials: "include",
@@ -113,7 +113,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
   const handleDeleteAttachment = async (anexoId) => {
     if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
     try {
-      const response = await fetch(`http://localhost:3001/anexos/${anexoId}`, {
+      const response = await fetch(getApiUrl(`/anexos/${anexoId}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -132,7 +132,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
     setIsRefreshing(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/comentarios`,
+        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/comentarios`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -174,7 +174,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/status`,
+        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/status`),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -311,7 +311,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
                       >
                         {caminhoDoArquivo ? (
                           <a
-                            href={`http://localhost:3001/${caminhoDoArquivo}`}
+                            href={getApiUrl(`/${caminhoDoArquivo}`)}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
@@ -495,7 +495,7 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
                   return;
                 try {
                   const resp = await fetch(
-                    `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
+                    getApiUrl(`/planejamentos/${localInfo.id_planejamento}`),
                     { method: "DELETE", credentials: "include" }
                   );
                   if (!resp.ok)

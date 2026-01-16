@@ -1,14 +1,14 @@
-import axios from 'axios';
+import axios from "axios";
 
 // Configuração da API
 // Remove trailing slash se existir
-const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-export const API_URL = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+export const API_URL = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
 // Helper para construir URLs de API
 export const getApiUrl = (path) => {
   // Garante que o path começa com / mas não duplica
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_URL}${normalizedPath}`;
 };
 
@@ -21,7 +21,7 @@ const api = axios.create({
 // Interceptor para adicionar token do localStorage em todas as requisições
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

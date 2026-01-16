@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../../config/api";
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
 import TextareaWithHint from "../components/TextareaWithHint";
@@ -35,7 +36,7 @@ const CadastrarAlunoPage = () => {
     const fetchResponsaveis = async () => {
       setLoadingResponsaveis(true);
       try {
-        const response = await fetch("http://localhost:3001/responsaveis", {
+        const response = await fetch(getApiUrl("/responsaveis"), {
           credentials: "include",
         });
         if (response.ok) {
@@ -109,7 +110,7 @@ const CadastrarAlunoPage = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/cadastrar-aluno-completo",
+        getApiUrl("/cadastrar-aluno-completo"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

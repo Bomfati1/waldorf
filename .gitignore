@@ -2,7 +2,7 @@
 node_modules
 backend/node_modules
 escola/node_modules
-package-lock.json
+ package-lock.json
 /package.json
 
 # Config files na raiz (só devem estar nas subpastas)

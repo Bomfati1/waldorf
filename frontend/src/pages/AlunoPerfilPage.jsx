@@ -16,10 +16,10 @@ const AlunoPerfilPage = () => {
     setError("");
     try {
       const [detRes, turRes] = await Promise.all([
-        fetch(`http://localhost:3001/alunos/${alunoId}/detalhes`, {
+        fetch(getApiUrl(`/alunos/${alunoId}/detalhes`), {
           credentials: "include",
         }),
-        fetch("http://localhost:3001/turmas", { credentials: "include" }),
+        fetch(getApiUrl("/turmas"), { credentials: "include" }),
       ]);
       if (!detRes.ok) throw new Error("Falha ao carregar dados do aluno");
       if (!turRes.ok) throw new Error("Falha ao carregar turmas");
@@ -41,7 +41,7 @@ const AlunoPerfilPage = () => {
   const handleSave = async (updatedData) => {
     try {
       const resp = await fetch(
-        `http://localhost:3001/alunos/${updatedData.aluno_id}`,
+        getApiUrl(`/alunos/${updatedData.aluno_id}`),
         {
           method: "PUT",
           credentials: "include",
@@ -85,7 +85,7 @@ const AlunoPerfilPage = () => {
         >
           {aluno.foto_perfil ? (
             <img
-              src={`http://localhost:3001${aluno.foto_perfil}`}
+              src={`${API_URL}${aluno.foto_perfil}`}
               alt="Foto"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />

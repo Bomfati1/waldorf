@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 import "../css/Notificacoes.css";
 
 const Notificacoes = () => {
@@ -14,7 +15,7 @@ const Notificacoes = () => {
   const buscarNotificacoes = async () => {
     console.log("🔔 [FRONTEND] Iniciando busca de notificações...");
     try {
-      const response = await fetch("http://localhost:3001/notificacoes", {
+      const response = await fetch(getApiUrl("/notificacoes"), {
         credentials: "include",
       });
       console.log("📡 [FRONTEND] Response status:", response.status);
@@ -60,7 +61,7 @@ const Notificacoes = () => {
   const buscarContador = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/notificacoes/nao-lidas/count",
+        getApiUrl("/notificacoes/nao-lidas/count"),
         {
           credentials: "include",
         }
@@ -85,7 +86,7 @@ const Notificacoes = () => {
   const marcarComoLida = async (id) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/notificacoes/${id}/ler`,
+        getApiUrl(`/notificacoes/${id}/ler`),
         {
           method: "PATCH",
           credentials: "include",
@@ -104,7 +105,7 @@ const Notificacoes = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:3001/notificacoes/ler-todas",
+        getApiUrl("/notificacoes/ler-todas"),
         {
           method: "PATCH",
           credentials: "include",
@@ -124,7 +125,7 @@ const Notificacoes = () => {
   const deletarNotificacao = async (id, event) => {
     event.stopPropagation();
     try {
-      const response = await fetch(`http://localhost:3001/notificacoes/${id}`, {
+      const response = await fetch(getApiUrl(`/notificacoes/${id}`), {
         method: "DELETE",
         credentials: "include",
       });

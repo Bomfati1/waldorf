@@ -23,7 +23,7 @@ const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
-        const response = await fetch("http://localhost:3001/turmas", {
+        const response = await fetch(getApiUrl("/turmas"), {
           credentials: "include",
         });
         if (!response.ok) throw new Error("Falha ao buscar turmas.");
@@ -170,13 +170,13 @@ const AlunosPage = () => {
     try {
       // Usando Promise.all para buscar alunos e turmas em paralelo
       const [ativosRes, inativosRes, turmasRes] = await Promise.all([
-        fetch("http://localhost:3001/alunos/ativos", {
+        fetch(getApiUrl("/alunos/ativos"), {
           credentials: "include",
         }),
-        fetch("http://localhost:3001/alunos/inativos", {
+        fetch(getApiUrl("/alunos/inativos"), {
           credentials: "include",
         }),
-        fetch("http://localhost:3001/turmas", {
+        fetch(getApiUrl("/turmas"), {
           credentials: "include",
         }),
       ]);
@@ -254,7 +254,7 @@ const AlunosPage = () => {
   const handleOpenEditModal = async (alunoId) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoId}/detalhes`,
+        getApiUrl(`/alunos/${alunoId}/detalhes`),
         {
           credentials: "include",
         }
@@ -272,7 +272,7 @@ const AlunosPage = () => {
   const handleSave = async (updatedData) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${updatedData.aluno_id}`,
+        getApiUrl(`/alunos/${updatedData.aluno_id}`),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -303,7 +303,7 @@ const AlunosPage = () => {
     }
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoId}/matricular`,
+        getApiUrl(`/alunos/${alunoId}/matricular`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -333,7 +333,7 @@ const AlunosPage = () => {
     if (userConfirmed) {
       try {
         const response = await fetch(
-          `http://localhost:3001/alunos/${alunoId}`,
+          getApiUrl(`/alunos/${alunoId}`),
           {
             method: "DELETE",
             credentials: "include",
@@ -465,7 +465,7 @@ const AlunosPage = () => {
                         <div className="table-photo">
                           {aluno.foto_perfil ? (
                             <img
-                              src={`http://localhost:3001${aluno.foto_perfil}`}
+                              src={`${API_URL}${aluno.foto_perfil}`}
                               alt="Foto do aluno"
                               className="table-aluno-photo"
                             />

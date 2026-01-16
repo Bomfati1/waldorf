@@ -31,7 +31,7 @@ const HistoricoAlunoPresencaPage = () => {
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
-        const response = await fetch("http://localhost:3001/turmas", {
+        const response = await fetch(getApiUrl("/turmas"), {
           credentials: "include",
         });
         if (!response.ok) throw new Error("Erro ao buscar turmas");
@@ -64,7 +64,7 @@ const HistoricoAlunoPresencaPage = () => {
     const fetchAlunos = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3001/turmas/${selectedTurma}/alunos`,
+          getApiUrl(`/turmas/${selectedTurma}/alunos`),
           {
             credentials: "include",
           }
@@ -107,13 +107,13 @@ const HistoricoAlunoPresencaPage = () => {
         // Buscar histórico completo da turma e informações básicas
         const [historicoRes, turmaRes] = await Promise.all([
           fetch(
-            `http://localhost:3001/turmas/${selectedTurma}/historico-presenca`,
+            getApiUrl(`/turmas/${selectedTurma}/historico-presenca`),
             {
               credentials: "include",
             }
           ),
           fetch(
-            `http://localhost:3001/turmas/${selectedTurma}/detalhes-presenca`,
+            getApiUrl(`/turmas/${selectedTurma}/detalhes-presenca`),
             {
               credentials: "include",
             }

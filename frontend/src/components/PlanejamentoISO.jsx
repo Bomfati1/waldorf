@@ -42,7 +42,7 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/meses/${anoAtual}?turma_id=${turmaId}`,
+        getApiUrl(`/planejamentos/meses/${anoAtual}?turma_id=${turmaId}`),
         { credentials: "include" }
       );
 
@@ -76,7 +76,7 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/planejamentos/mensal",
+        getApiUrl("/planejamentos/mensal"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -149,7 +149,7 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
 
   const abrirModalPorId = async (id) => {
     try {
-      const resp = await fetch(`http://localhost:3001/planejamentos/${id}`, {
+      const resp = await fetch(getApiUrl(`/planejamentos/${id}`), {
         credentials: "include",
       });
       if (!resp.ok) throw new Error("Falha ao buscar planejamento.");
@@ -305,7 +305,7 @@ const PlanejamentoISO = ({ turmaId, ano }) => {
           onDelete={async (planejamentoId) => {
             try {
               const resp = await fetch(
-                `http://localhost:3001/planejamentos/${planejamentoId}`,
+                getApiUrl(`/planejamentos/${planejamentoId}`),
                 { method: "DELETE", credentials: "include" }
               );
               if (!resp.ok) throw new Error("Falha ao excluir planejamento.");

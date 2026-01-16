@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../../config/api";
 import InputWithHint from "../components/InputWithHint";
 import ModalBase from "../components/ModalBase";
 import EditAlunoModal from "../components/EditAlunoModal";
@@ -110,7 +111,7 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit, onAlunoClick }) => {
       setLoadingResponsavel(true);
       try {
         const response = await fetch(
-          `http://localhost:3001/responsaveis/${responsavel.id}`,
+          getApiUrl(`/responsaveis/${responsavel.id}`),
           {
             credentials: "include",
           }
@@ -143,7 +144,7 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit, onAlunoClick }) => {
       setLoadingAlunos(true);
       try {
         const response = await fetch(
-          `http://localhost:3001/responsaveis/${responsavel.id}/alunos`,
+          getApiUrl(`/responsaveis/${responsavel.id}/alunos`),
           {
             credentials: "include",
           }
@@ -425,7 +426,7 @@ const ResponsaveisPage = () => {
     const fetchResponsaveis = async () => {
       try {
         // Vamos assumir que a rota no seu backend será /responsaveis
-        const response = await fetch("http://localhost:3001/responsaveis", {
+        const response = await fetch(getApiUrl("/responsaveis"), {
           credentials: "include",
         });
         if (!response.ok) {
@@ -442,7 +443,7 @@ const ResponsaveisPage = () => {
 
     const fetchTurmas = async () => {
       try {
-        const response = await fetch("http://localhost:3001/turmas", {
+        const response = await fetch(getApiUrl("/turmas"), {
           credentials: "include",
         });
         if (response.ok) {
@@ -468,7 +469,7 @@ const ResponsaveisPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/responsaveis/${id}`, {
+      const response = await fetch(getApiUrl(`/responsaveis/${id}`), {
         method: "DELETE",
       });
 
@@ -495,7 +496,7 @@ const ResponsaveisPage = () => {
   const handleAlunoClick = async (alunoId) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${alunoId}/detalhes`,
+        getApiUrl(`/alunos/${alunoId}/detalhes`),
         { credentials: "include" }
       );
       if (response.ok) {
@@ -510,7 +511,7 @@ const ResponsaveisPage = () => {
   const handleSaveAluno = async (updatedData) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/alunos/${updatedData.aluno_id}`,
+        getApiUrl(`/alunos/${updatedData.aluno_id}`),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

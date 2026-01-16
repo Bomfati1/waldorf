@@ -1,5 +1,6 @@
 // src/pages/PreMatriculaPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
+import { getApiUrl } from "../../config/api";
 import InteressadosDashboardPage from "./InteressadosDashboardPage"; // Importa o componente do dashboard
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
@@ -99,7 +100,7 @@ const PreMatriculaPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("http://localhost:3001/interessados", {
+      const response = await fetch(getApiUrl("/interessados"), {
         credentials: "include",
       });
       if (!response.ok) {
@@ -126,7 +127,7 @@ const PreMatriculaPage = () => {
     const updatedInteressado = { ...interessado, status: newStatus };
 
     try {
-      const response = await fetch(`http://localhost:3001/interessados/${id}`, {
+      const response = await fetch(getApiUrl(`/interessados/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -196,7 +197,7 @@ const PreMatriculaPage = () => {
       // Adiciona um log para depuração. Verifique o console do navegador (F12).
       console.log("Enviando para o backend:", dataToSave);
 
-      const response = await fetch(`http://localhost:3001/interessados/${id}`, {
+      const response = await fetch(getApiUrl(`/interessados/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -292,7 +293,7 @@ const PreMatriculaPage = () => {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/interessados/${id}`, {
+      const response = await fetch(getApiUrl(`/interessados/${id}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -355,7 +356,7 @@ const PreMatriculaPage = () => {
         dataToSave.data_contato = new Date().toISOString();
       }
 
-      const response = await fetch("http://localhost:3001/interessados", {
+      const response = await fetch(getApiUrl("/interessados"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

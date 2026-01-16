@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../../config/api";
 import { useAuth } from "../context/AuthContext";
 import { useModal } from "../context/ModalContext";
 import jsPDF from "jspdf";
@@ -30,7 +31,7 @@ const TurmasPage = () => {
     const fetchTurmas = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:3001/turmas", {
+        const response = await fetch(getApiUrl("/turmas"), {
           credentials: "include",
         });
         if (!response.ok) {
@@ -76,7 +77,7 @@ const TurmasPage = () => {
     ) {
       try {
         const response = await fetch(
-          `http://localhost:3001/turmas/${turmaId}`,
+          getApiUrl(`/turmas/${turmaId}`),
           {
             method: "DELETE",
             credentials: "include",
@@ -117,7 +118,7 @@ const TurmasPage = () => {
     ) {
       try {
         const response = await fetch(
-          `http://localhost:3001/turmas/ano/${yearFilter}`,
+          getApiUrl(`/turmas/ano/${yearFilter}`),
           {
             method: "DELETE",
             credentials: "include",
@@ -156,7 +157,7 @@ const TurmasPage = () => {
     setLoadingAlunos(true);
     console.log("Buscando alunos para turma:", turma);
     try {
-      const url = `http://localhost:3001/turmas/${turma.id}/alunos`;
+      const url = getApiUrl(`/turmas/${turma.id}/alunos`);
       console.log("URL da requisição:", url);
 
       const response = await fetch(url, {
@@ -206,7 +207,7 @@ const TurmasPage = () => {
     console.log("Rematrícula realizada:", data);
     // Recarrega as turmas para atualizar as contagens
     try {
-      const response = await fetch("http://localhost:3001/turmas", {
+      const response = await fetch(getApiUrl("/turmas"), {
         credentials: "include",
       });
       if (response.ok) {

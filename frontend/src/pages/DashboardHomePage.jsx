@@ -120,7 +120,7 @@ const HomePage = () => {
         <div className="profile-card-header">
           {user.foto_perfil ? (
             <img
-              src={`http://localhost:3001${user.foto_perfil}`}
+              src={`${API_URL}${user.foto_perfil}`}
               alt="Foto do Perfil"
               className="profile-photo"
             />

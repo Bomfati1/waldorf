@@ -26,7 +26,7 @@ const RematriculaModal = ({
     const fetchAlunos = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3001/turmas/${turmaOrigem.id}/alunos`,
+          getApiUrl(`/turmas/${turmaOrigem.id}/alunos`),
           {
             credentials: "include",
           }
@@ -83,7 +83,7 @@ const RematriculaModal = ({
 
     try {
       const response = await fetch(
-        `http://localhost:3001/turmas/${turmaOrigem.id}/rematricula`,
+        getApiUrl(`/turmas/${turmaOrigem.id}/rematricula`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

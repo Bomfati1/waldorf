@@ -28,8 +28,8 @@ const HistoricoPresencaPage = () => {
 
       try {
         const [historicoRes, turmaRes] = await Promise.all([
-          fetch(`http://localhost:3001/turmas/${turmaId}/historico-presenca`),
-          fetch(`http://localhost:3001/turmas/${turmaId}/detalhes-presenca`),
+          fetch(getApiUrl(`/turmas/${turmaId}/historico-presenca`)),
+          fetch(getApiUrl(`/turmas/${turmaId}/detalhes-presenca`)),
         ]);
 
         if (!historicoRes.ok || !turmaRes.ok) {

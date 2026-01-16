@@ -1,4 +1,5 @@
 import React from "react";
+import { getApiUrl } from "../config/api";
 import { FaTrash, FaUser, FaClock } from "react-icons/fa";
 
 const formatDate = (dateString) => {
@@ -61,7 +62,7 @@ function ListaComentarios({ comentarios, usuarioAtual, onComentarioExcluido }) {
     try {
       // Faz a requisição DELETE para o backend
       const response = await fetch(
-        `http://localhost:3001/comentarios/${comentarioId}`,
+        getApiUrl(`/comentarios/${comentarioId}`),
         {
           method: "DELETE",
           credentials: "include"

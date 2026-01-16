@@ -30,9 +30,9 @@ const PresencaPage = () => {
       try {
         // Busca detalhes da turma e presenças existentes em paralelo
         const [turmaRes, presencasRes] = await Promise.all([
-          fetch(`http://localhost:3001/turmas/${turmaId}/detalhes-presenca`),
+          fetch(getApiUrl(`/turmas/${turmaId}/detalhes-presenca`)),
           fetch(
-            `http://localhost:3001/turmas/${turmaId}/presencas?data=${selectedDate}`
+            getApiUrl(`/turmas/${turmaId}/presencas?data=${selectedDate}`)
           ),
         ]);
 
@@ -129,7 +129,7 @@ const PresencaPage = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/turmas/${turmaId}/presencas`,
+        getApiUrl(`/turmas/${turmaId}/presencas`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

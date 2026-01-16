@@ -44,7 +44,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
         try {
           setIsoLoading(true);
           const resp = await fetch(
-            `http://localhost:3001/planejamentos/semana-iso/${info.ano_iso}/${info.semana_iso}`,
+            getApiUrl(`/planejamentos/semana-iso/${info.ano_iso}/${info.semana_iso}`),
             { credentials: "include" }
           );
           if (resp.ok) {
@@ -89,7 +89,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
 
   const refetchPlanejamento = async () => {
     const resp = await fetch(
-      `http://localhost:3001/planejamentos/${localInfo.id_planejamento}`,
+      getApiUrl(`/planejamentos/${localInfo.id_planejamento}`),
       { credentials: "include" }
     );
     if (!resp.ok) throw new Error("Falha ao recarregar planejamento.");
@@ -127,7 +127,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/anexos`,
+        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/anexos`),
         { method: "POST", credentials: "include", body: formData }
       );
       if (!response.ok) throw new Error("Falha ao enviar anexo.");
@@ -146,7 +146,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
   const handleDeleteAttachment = async (anexoId) => {
     if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
     try {
-      const response = await fetch(`http://localhost:3001/anexos/${anexoId}`, {
+      const response = await fetch(getApiUrl(`/anexos/${anexoId}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -164,7 +164,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     setIsRefreshing(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/comentarios`,
+        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/comentarios`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -207,7 +207,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/planejamentos/${localInfo.id_planejamento}/status`,
+        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/status`),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -455,7 +455,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
                     >
                       {caminhoDoArquivo ? (
                         <a
-                          href={`http://localhost:3001/${caminhoDoArquivo}`}
+                          href={getApiUrl(`/${caminhoDoArquivo}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

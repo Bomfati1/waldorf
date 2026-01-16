@@ -20,7 +20,7 @@ const PlanejamentosISOPage = () => {
   const fetchTurmas = async () => {
     console.log("📡 [PLANEJAMENTOS-ISO] Buscando turmas...");
     try {
-      const response = await fetch("http://localhost:3001/turmas", {
+      const response = await fetch(getApiUrl("/turmas"), {
         credentials: "include",
       });
 
