@@ -1,7 +1,5 @@
 postcss.config.js
 node_modules
 package-lock.json
-package.json
-index.html
 dist
 uploads
