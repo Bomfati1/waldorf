@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { getApiUrl, API_URL } from "../config/api";
 import EditAlunoModal from "../components/EditAlunoModal";
 
 const AlunoPerfilPage = () => {

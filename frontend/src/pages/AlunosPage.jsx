@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl, API_URL } from "../config/api";
 import { useModal } from "../context/ModalContext";
 import EditAlunoModal from "../components/EditAlunoModal";
 import ModalBase from "../components/ModalBase";

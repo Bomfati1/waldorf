@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getApiUrl, API_URL } from "../config/api";
 import ListaComentarios from "./ListaComentarios";
 import { useAuth } from "../context/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";

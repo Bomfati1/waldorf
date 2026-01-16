@@ -1,5 +1,6 @@
 // Shared PDF utilities for branding and header/footer rendering
 // Loads the Waldorf logo from backend uploads and converts to a PNG data URL for jsPDF
+import { getApiUrl } from "../config/api";
 
 const LOGO_URL =
   getApiUrl("/uploads/aluno_image/bf-fundo-trasnparente-pequeno-YNqrBazK8rUMjRGQ.avif");

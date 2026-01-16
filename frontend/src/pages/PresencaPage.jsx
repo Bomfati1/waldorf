@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 import InputWithHint from "../components/InputWithHint";
 
 const statusOptions = [

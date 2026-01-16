@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useAuth } from "../context/AuthContext"; // Importar o hook
+import { useAuth } from "../context/AuthContext";
+import { getApiUrl, API_URL } from "../config/api"; // Importar o hook
 import "../css/PerfilPage.css"; // Vamos criar este CSS a seguir
 
 const PerfilPage = () => {

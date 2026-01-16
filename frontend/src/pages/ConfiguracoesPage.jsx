@@ -1,5 +1,6 @@
 // src/pages/ConfiguracoesPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
+import { getApiUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import ModalBase from "../components/ModalBase";
 import { useModal } from "../context/ModalContext";

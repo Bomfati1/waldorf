@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 import jsPDF from "jspdf";
 import { drawHeader, drawFooter, formatBRDate } from "../utils/pdfUtils";
 

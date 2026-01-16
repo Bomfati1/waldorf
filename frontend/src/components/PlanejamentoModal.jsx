@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getApiUrl, API_URL } from "../config/api";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "../context/AuthContext";

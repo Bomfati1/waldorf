@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getApiUrl } from "../config/api";
 import { useNavigate, useParams } from "react-router-dom";
 import jsPDF from "jspdf";
 import SelectWithHint from "../components/SelectWithHint";

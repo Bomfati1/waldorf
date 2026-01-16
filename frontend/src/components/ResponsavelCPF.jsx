@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getApiUrl } from "../config/api";
 import { validateCPF, maskCPF, cleanCPF } from "../utils/cpfValidator";
 import InputWithHint from "./InputWithHint";
 import "../css/ResponsavelCPF.css";
