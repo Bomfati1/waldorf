@@ -127,21 +127,33 @@ async function sendResetEmail(to, resetLink) {
 }
 
 app.post("/login", async (req, res) => {
+  console.log('🔐 Tentativa de login:', { email: req.body.email, hasPassword: !!req.body.password });
+  
   const { email, password, rememberMe } = req.body;
   if (!email || !password) {
+    console.log('❌ Login falhou: email ou senha ausente');
     return res.status(400).json({ error: "Email e senha são obrigatórios." });
   }
   try {
+    console.log('🔍 Buscando usuário no banco:', email);
     const userQuery = await db.query(
       "SELECT * FROM usuarios WHERE email = $1",
       [email]
     );
+    console.log('📊 Resultado da query:', userQuery.rows.length, 'usuário(s) encontrado(s)');
+    
     if (userQuery.rows.length === 0) {
+      console.log('❌ Usuário não encontrado:', email);
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
     const user = userQuery.rows[0];
+    console.log('✓ Usuário encontrado, verificando senha...');
+    
     const isMatch = await bcrypt.compare(password, user.senha);
+    console.log('🔑 Senha válida:', isMatch);
+    
     if (!isMatch) {
+      console.log('❌ Senha incorreta para:', email);
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
 
@@ -169,6 +181,7 @@ app.post("/login", async (req, res) => {
     // Definir cookie
     res.cookie("authToken", token, cookieOptions);
 
+    console.log('✅ Login bem-sucedido para:', email);
     res.status(200).json({
       message: "Login bem-sucedido!",
       userId: user.id,
@@ -179,7 +192,9 @@ app.post("/login", async (req, res) => {
       token: token, // Retorna o token no response para uso com localStorage
     });
   } catch (err) {
-    console.error(err.message);
+    console.error('❌ ERRO NO LOGIN:', err.message);
+    console.error('   Stack:', err.stack);
+    console.error('   Code:', err.code);
     res.status(500).json({ error: "Erro no servidor." });
   }
 });

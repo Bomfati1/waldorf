@@ -38,6 +38,14 @@ if (PGHOST && PGPORT && PGUSER && PGPASSWORD && PGDATABASE) {
   );
 }
 
+// Log da configuração antes de criar o pool
+console.log('🔧 Configuração do Pool PostgreSQL:');
+console.log('   Host:', poolConfig.host);
+console.log('   Port:', poolConfig.port);
+console.log('   User:', poolConfig.user);
+console.log('   Database:', poolConfig.database);
+console.log('   SSL:', poolConfig.ssl ? 'Habilitado' : 'Desabilitado');
+
 // Cria uma nova instância do Pool com as configurações de conexão
 const pool = new Pool(poolConfig);
 
@@ -48,6 +56,8 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('❌ Erro inesperado no pool de conexão:', err);
+  console.error('   Código do erro:', err.code);
+  console.error('   Mensagem:', err.message);
 });
 
 // Exporta o pool diretamente.
