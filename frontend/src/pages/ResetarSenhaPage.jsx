@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 import "../css/App.css";
 import "../css/Login.css";
 

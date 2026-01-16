@@ -1,5 +1,6 @@
 // src/pages/InteressadosDashboardPage.jsx
 import React, { useState, useEffect } from "react";
+import { getApiUrl } from "../config/api";
 import {
   Chart as ChartJS,
   ArcElement,
