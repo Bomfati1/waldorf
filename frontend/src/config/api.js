@@ -29,8 +29,12 @@ export const fetchWithAuth = async (path, options = {}) => {
   const url = getApiUrl(path);
   const token = localStorage.getItem("token");
   
+  // Não adiciona Content-Type se for FormData (o browser adiciona automaticamente com boundary)
+  const isFormData = options.body instanceof FormData;
+  
   const headers = {
-    ...options.headers,
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(options.headers || {}),
   };
   
   if (token) {
