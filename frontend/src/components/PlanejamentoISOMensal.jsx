@@ -32,9 +32,8 @@ const PlanejamentoISOMensal = ({ turmaId, ano }) => {
     console.log(`📅 Buscando meses para o ano ${anoAtual}, Turma: ${turmaId}`);
 
     try {
-      const response = await fetch(
-        getApiUrl(`/planejamentos/meses/${anoAtual}?turma_id=${turmaId}`),
-        { credentials: "include" }
+      const response = await fetchWithAuth(
+        `/planejamentos/meses/${anoAtual}?turma_id=${turmaId}`,
       );
 
       if (!response.ok) {
@@ -68,8 +67,6 @@ const PlanejamentoISOMensal = ({ turmaId, ano }) => {
     try {
       const response = await fetchWithAuth("/planejamentos/mensal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           turma_id: turmaId,
           ano: mes.ano,
@@ -86,7 +83,7 @@ const PlanejamentoISOMensal = ({ turmaId, ano }) => {
       const id = data.id_planejamento;
       console.log(
         data.created ? "✅ Planejamento criado" : "↩️ Planejamento existente",
-        data
+        data,
       );
 
       await fetchMesesDoAno();
@@ -244,9 +241,9 @@ const PlanejamentoISOMensal = ({ turmaId, ano }) => {
           }}
           onDelete={async (planejamentoId) => {
             try {
-              const resp = await fetch(
-                getApiUrl(`/planejamentos/${planejamentoId}`),
-                { method: "DELETE", credentials: "include" }
+              const resp = await fetchWithAuth(
+                `/planejamentos/${planejamentoId}`,
+                { method: "DELETE" },
               );
               if (!resp.ok) throw new Error("Falha ao excluir planejamento.");
               await fetchMesesDoAno();

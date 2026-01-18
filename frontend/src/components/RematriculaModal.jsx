@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../config/api";
+import { fetchWithAuth } from "../config/api";
 import InputWithHint from "./InputWithHint";
 import SelectWithHint from "./SelectWithHint";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -26,11 +26,8 @@ const RematriculaModal = ({
   useEffect(() => {
     const fetchAlunos = async () => {
       try {
-        const response = await fetch(
-          getApiUrl(`/turmas/${turmaOrigem.id}/alunos`),
-          {
-            credentials: "include",
-          }
+        const response = await fetchWithAuth(
+          `/turmas/${turmaOrigem.id}/alunos`,
         );
 
         if (response.ok) {
@@ -54,7 +51,7 @@ const RematriculaModal = ({
     setAlunosSelecionados((prev) =>
       prev.includes(alunoId)
         ? prev.filter((id) => id !== alunoId)
-        : [...prev, alunoId]
+        : [...prev, alunoId],
     );
   };
 
@@ -83,18 +80,16 @@ const RematriculaModal = ({
     setError("");
 
     try {
-      const response = await fetch(
-        getApiUrl(`/turmas/${turmaOrigem.id}/rematricula`),
+      const response = await fetchWithAuth(
+        `/turmas/${turmaOrigem.id}/rematricula`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({
             turmaDestinoId: parseInt(turmaDestinoId),
             alunosIds: alunosSelecionados,
             novoAnoLetivo,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -251,7 +246,7 @@ const RematriculaModal = ({
                       <span className="aluno-info">
                         {aluno.data_nascimento
                           ? new Date(aluno.data_nascimento).toLocaleDateString(
-                              "pt-BR"
+                              "pt-BR",
                             )
                           : "Sem data"}
                       </span>

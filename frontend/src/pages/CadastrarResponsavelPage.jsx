@@ -80,14 +80,12 @@ const CadastrarResponsavelPage = () => {
     try {
       const response = await fetchWithAuth("/responsaveis", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(formData),
       });
 
       console.log(
         "📡 [CADASTRO RESPONSÁVEL] Response status:",
-        response.status
+        response.status,
       );
 
       const data = await response.json();
@@ -95,7 +93,7 @@ const CadastrarResponsavelPage = () => {
 
       if (!response.ok) {
         throw new Error(
-          data.error || "Ocorreu um erro ao cadastrar responsável."
+          data.error || "Ocorreu um erro ao cadastrar responsável.",
         );
       }
 
@@ -104,7 +102,7 @@ const CadastrarResponsavelPage = () => {
 
       setTimeout(() => {
         console.log(
-          "➡️ [CADASTRO RESPONSÁVEL] Navegando para /home/responsaveis"
+          "➡️ [CADASTRO RESPONSÁVEL] Navegando para /home/responsaveis",
         );
         navigate("/home/responsaveis");
       }, 2000);

@@ -29,16 +29,13 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("planejamento");
   const [localInfo, setLocalInfo] = useState(info);
-  const [anexos, setAnexos] = useState(info.anexos || []);
   const [comentarios, setComentarios] = useState(info.comentarios || []);
   const [newComment, setNewComment] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setLocalInfo(info);
-    setAnexos(info.anexos || []);
     setComentarios(info.comentarios || []);
   }, [info]);
 
@@ -56,75 +53,13 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
   const handleModalContentClick = (e) => e.stopPropagation();
 
   const refetchPlanejamento = async () => {
-    const resp = await fetch(
-      getApiUrl(`/planejamentos/${localInfo.id_planejamento}`),
-      { credentials: "include" }
+    const resp = await fetchWithAuth(
+      `/planejamentos/${localInfo.id_planejamento}`,
     );
     if (!resp.ok) throw new Error("Falha ao recarregar planejamento.");
     const data = await resp.json();
     setLocalInfo(data);
-    setAnexos(data.anexos || []);
     setComentarios(data.comentarios || []);
-  };
-
-  const allowedExt = ["pdf", "doc", "docx", "odt"];
-  const allowedMime = [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.oasis.opendocument.text",
-  ];
-
-  const handleUploadAttachment = async () => {
-    if (!selectedFile) return alert("Por favor, selecione um arquivo.");
-    const name = selectedFile.name || "";
-    const ext = name.split(".").pop().toLowerCase();
-    const type = selectedFile.type;
-    if (!allowedExt.includes(ext) && !allowedMime.includes(type)) {
-      return alert(
-        "Tipo de arquivo não permitido. Envie PDF, DOC, DOCX ou ODT."
-      );
-    }
-    setIsSubmitting(true);
-    const formData = new FormData();
-    formData.append("anexo", selectedFile);
-    try {
-      const response = await fetch(
-        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/anexos`),
-        {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        }
-      );
-      if (!response.ok) throw new Error("Falha ao enviar anexo.");
-      await refetchPlanejamento();
-      setSelectedFile(null);
-      const input = document.getElementById("iso-planejamento-upload");
-      if (input) input.value = "";
-      onRefresh?.();
-      alert("Anexo enviado com sucesso!");
-    } catch (error) {
-      alert(`Erro: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteAttachment = async (anexoId) => {
-    if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
-    try {
-      const response = await fetchWithAuth(`/anexos/${anexoId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Falha ao excluir anexo.");
-      await refetchPlanejamento();
-      onRefresh?.();
-      alert("Anexo excluído com sucesso!");
-    } catch (error) {
-      alert(`Erro: ${error.message}`);
-    }
   };
 
   const handleAddComment = async () => {
@@ -132,14 +67,12 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
     setIsSubmitting(true);
     setIsRefreshing(true);
     try {
-      const response = await fetch(
-        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/comentarios`),
+      const response = await fetchWithAuth(
+        `/planejamentos/${localInfo.id_planejamento}/comentarios`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ texto_comentario: newComment }),
-        }
+        },
       );
       if (!response.ok) throw new Error("Falha ao adicionar comentário.");
       await refetchPlanejamento();
@@ -168,20 +101,18 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
   const handleUpdateStatus = async (newStatus) => {
     if (
       !window.confirm(
-        `Tem certeza que deseja ${newStatus.toLowerCase()} este planejamento?`
+        `Tem certeza que deseja ${newStatus.toLowerCase()} este planejamento?`,
       )
     )
       return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(
-        getApiUrl(`/planejamentos/${localInfo.id_planejamento}/status`),
+      const response = await fetchWithAuth(
+        `/planejamentos/${localInfo.id_planejamento}/status`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ status: newStatus }),
-        }
+        },
       );
       if (!response.ok) throw new Error("Falha ao atualizar o status.");
       await refetchPlanejamento();
@@ -247,8 +178,8 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
                   localInfo.status === "Aprovado"
                     ? "green"
                     : localInfo.status === "Reprovado"
-                    ? "red"
-                    : "orange",
+                      ? "red"
+                      : "orange",
               }}
             >
               {localInfo.status || "Pendente"}
@@ -280,85 +211,9 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
 
         {activeTab === "planejamento" && (
           <div>
-            <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-              <label>Anexos</label>
-              {anexos && anexos.length > 0 ? (
-                <ul
-                  style={{ listStyle: "none", padding: 0, marginTop: ".5rem" }}
-                >
-                  {anexos.map((anexo) => {
-                    const caminhoDoArquivo =
-                      anexo.path_arquivo ||
-                      anexo.caminho_arquivo ||
-                      anexo.caminho;
-                    const nomeDoArquivo =
-                      anexo.nome_original ||
-                      anexo.nome_arquivo ||
-                      (caminhoDoArquivo
-                        ? caminhoDoArquivo.split("/").pop()
-                        : "Anexo");
-                    return (
-                      <li
-                        key={anexo.id_anexo}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: 8,
-                          border: "1px solid #eee",
-                          borderRadius: 4,
-                          marginBottom: ".5rem",
-                        }}
-                      >
-                        {caminhoDoArquivo ? (
-                          <a
-                            href={getApiUrl(`/${caminhoDoArquivo}`)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {nomeDoArquivo}
-                          </a>
-                        ) : (
-                          <span
-                            style={{ color: "#dc3545", fontStyle: "italic" }}
-                          >
-                            {nomeDoArquivo} (caminho inválido)
-                          </span>
-                        )}
-                        <button
-                          onClick={() => handleDeleteAttachment(anexo.id_anexo)}
-                          className="delete-button"
-                          title="Excluir anexo"
-                        >
-                          &times;
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p>Nenhum anexo encontrado.</p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="iso-planejamento-upload">
-                Adicionar novo anexo
-              </label>
-              <input
-                type="file"
-                id="iso-planejamento-upload"
-                accept=".pdf,.doc,.docx,.odt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-              />
-              <button
-                onClick={handleUploadAttachment}
-                disabled={isSubmitting}
-                className="submit-button"
-              >
-                {isSubmitting ? "Enviando..." : "Enviar Anexo"}
-              </button>
-            </div>
+            <p style={{ color: "#666", fontStyle: "italic" }}>
+              Sistema de anexos será implementado em breve.
+            </p>
           </div>
         )}
 
@@ -490,14 +345,14 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
               onClick={async () => {
                 if (
                   !window.confirm(
-                    "Tem certeza que deseja excluir este planejamento?"
+                    "Tem certeza que deseja excluir este planejamento?",
                   )
                 )
                   return;
                 try {
-                  const resp = await fetch(
-                    getApiUrl(`/planejamentos/${localInfo.id_planejamento}`),
-                    { method: "DELETE", credentials: "include" }
+                  const resp = await fetchWithAuth(
+                    `/planejamentos/${localInfo.id_planejamento}`,
+                    { method: "DELETE" },
                   );
                   if (!resp.ok)
                     throw new Error("Falha ao excluir planejamento.");

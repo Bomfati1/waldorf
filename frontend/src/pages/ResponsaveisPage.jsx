@@ -110,12 +110,7 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit, onAlunoClick }) => {
 
       setLoadingResponsavel(true);
       try {
-        const response = await fetch(
-          getApiUrl(`/responsaveis/${responsavel.id}`),
-          {
-            credentials: "include",
-          }
-        );
+        const response = await fetchWithAuth(`/responsaveis/${responsavel.id}`);
 
         if (response.ok) {
           const data = await response.json();
@@ -143,11 +138,8 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit, onAlunoClick }) => {
 
       setLoadingAlunos(true);
       try {
-        const response = await fetch(
-          getApiUrl(`/responsaveis/${responsavel.id}/alunos`),
-          {
-            credentials: "include",
-          }
+        const response = await fetchWithAuth(
+          `/responsaveis/${responsavel.id}/alunos`,
         );
 
         if (response.ok) {
@@ -179,7 +171,7 @@ const ResponsavelModal = ({ responsavel, onClose, onEdit, onAlunoClick }) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     return new Date(
-      date.getTime() + date.getTimezoneOffset() * 60000
+      date.getTime() + date.getTimezoneOffset() * 60000,
     ).toLocaleDateString("pt-BR");
   };
 
@@ -426,9 +418,7 @@ const ResponsaveisPage = () => {
     const fetchResponsaveis = async () => {
       try {
         // Vamos assumir que a rota no seu backend será /responsaveis
-        const response = await fetchWithAuth("/responsaveis", {
-          credentials: "include",
-        });
+        const response = await fetchWithAuth("/responsaveis");
         if (!response.ok) {
           throw new Error("Falha ao buscar os dados dos responsáveis.");
         }
@@ -443,9 +433,7 @@ const ResponsaveisPage = () => {
 
     const fetchTurmas = async () => {
       try {
-        const response = await fetchWithAuth("/turmas", {
-          credentials: "include",
-        });
+        const response = await fetchWithAuth("/turmas");
         if (response.ok) {
           const data = await response.json();
           setTurmas(data);
@@ -462,7 +450,7 @@ const ResponsaveisPage = () => {
   const handleDelete = async (id) => {
     if (
       !window.confirm(
-        "Tem certeza que deseja excluir este responsável? Esta ação não pode ser desfeita."
+        "Tem certeza que deseja excluir este responsável? Esta ação não pode ser desfeita.",
       )
     ) {
       return;
@@ -509,15 +497,10 @@ const ResponsaveisPage = () => {
 
   const handleSaveAluno = async (updatedData) => {
     try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${updatedData.aluno_id}`),
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(updatedData),
-        }
-      );
+      const response = await fetchWithAuth(`/alunos/${updatedData.aluno_id}`, {
+        method: "PUT",
+        body: JSON.stringify(updatedData),
+      });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
 
@@ -534,7 +517,9 @@ const ResponsaveisPage = () => {
   // Filtra os responsáveis com base no termo de busca
   const filteredResponsaveis = useMemo(() => {
     return responsaveis.filter((responsavel) =>
-      responsavel.nome_completo.toLowerCase().includes(searchTerm.toLowerCase())
+      responsavel.nome_completo
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()),
     );
   }, [responsaveis, searchTerm]);
 
