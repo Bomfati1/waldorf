@@ -93,17 +93,27 @@ async function sendResetEmail(to, resetLink) {
     const nodemailer = require("nodemailer");
     const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } =
       process.env;
+
+    console.log("📧 [sendResetEmail] Iniciando envio de email");
+    console.log("📧 [sendResetEmail] SMTP_HOST:", SMTP_HOST ? "Configurado" : "Não configurado");
+    console.log("📧 [sendResetEmail] SMTP_USER:", SMTP_USER);
+    console.log("📧 [sendResetEmail] EMAIL_FROM:", EMAIL_FROM);
+
     if (!SMTP_HOST) {
-      console.log("SMTP não configurado. Link de recuperação:", resetLink);
+      console.log("❌ [sendResetEmail] SMTP não configurado. Link de recuperação:", resetLink);
       return;
     }
+
+    console.log("📧 [sendResetEmail] Criando transporter...");
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT ? parseInt(SMTP_PORT) : 587,
       secure: false,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
-    await transporter.sendMail({
+
+    console.log("📧 [sendResetEmail] Enviando email para:", to);
+    const result = await transporter.sendMail({
       from: EMAIL_FROM || SMTP_USER,
       to: to,
       subject: "Recuperação de senha - Sistema Escolar",
@@ -126,13 +136,15 @@ async function sendResetEmail(to, resetLink) {
         </div>
       `,
     });
+
+    console.log("✅ [sendResetEmail] Email enviado com sucesso para:", to);
+    console.log("📧 [sendResetEmail] Message ID:", result.messageId);
+
   } catch (err) {
-    console.log(
-      "Falha ao enviar e-mail. Link de recuperação:",
-      resetLink,
-      "Erro:",
-      err.message,
-    );
+    console.error("❌ [sendResetEmail] Falha ao enviar e-mail");
+    console.error("❌ [sendResetEmail] Link de recuperação:", resetLink);
+    console.error("❌ [sendResetEmail] Erro:", err.message);
+    console.error("❌ [sendResetEmail] Stack:", err.stack);
   }
 }
 
@@ -393,8 +405,12 @@ function normalizePeriodo(value) {
 // Início do fluxo de recuperação de senha
 app.post("/recuperar-senha", async (req, res) => {
   try {
+    console.log("🔑 [recuperar-senha] Solicitação recebida");
     const { email } = req.body;
+    console.log("🔑 [recuperar-senha] Email:", email);
+
     if (!email) {
+      console.log("❌ [recuperar-senha] Email não fornecido");
       return res.status(400).json({ error: "Email é obrigatório." });
     }
 
@@ -403,6 +419,8 @@ app.post("/recuperar-senha", async (req, res) => {
       [email],
     );
 
+    console.log("🔑 [recuperar-senha] Usuários encontrados:", userQuery.rows.length);
+
     // Resposta genérica para não vazar existência de e-mails
     const genericMsg = {
       message:
@@ -410,10 +428,13 @@ app.post("/recuperar-senha", async (req, res) => {
     };
 
     if (userQuery.rows.length === 0) {
+      console.log("❌ [recuperar-senha] Usuário não encontrado");
       return res.status(200).json(genericMsg);
     }
 
     const user = userQuery.rows[0];
+    console.log("✅ [recuperar-senha] Usuário encontrado:", user.email);
+
     const resetToken = jwt.sign(
       { type: "password_reset", userId: user.id, email: user.email },
       JWT_SECRET,
@@ -427,12 +448,16 @@ app.post("/recuperar-senha", async (req, res) => {
       "",
     )}/resetar-senha?token=${encodeURIComponent(resetToken)}`;
 
+    console.log("🔗 [recuperar-senha] Link gerado:", resetLink);
+
     // Tenta enviar o e-mail; se SMTP não estiver configurado, loga o link
+    console.log("📧 [recuperar-senha] Chamando sendResetEmail...");
     await sendResetEmail(user.email, resetLink);
 
+    console.log("✅ [recuperar-senha] Processo concluído");
     return res.status(200).json(genericMsg);
   } catch (err) {
-    console.error("Erro em /recuperar-senha:", err);
+    console.error("❌ [recuperar-senha] Erro:", err);
     return res.status(500).json({ error: "Erro no servidor." });
   }
 });

@@ -99,20 +99,30 @@ router.post("/request-upload", async (req, res) => {
  * Gera uma URL assinada para download de arquivo do Firebase Storage
  */
 router.post("/request-download", async (req, res) => {
+  console.log("🔍 [request-download] Route hit!");
+  console.log("🔍 [request-download] Request body:", req.body);
+  console.log("🔍 [request-download] Headers:", req.headers);
+
   try {
     const { filePath } = req.body;
 
     if (!filePath) {
+      console.log("❌ [request-download] filePath missing");
       return res.status(400).json({ error: "filePath é obrigatório" });
     }
+
+    console.log("🔍 [request-download] filePath:", filePath);
 
     const file = bucket.file(filePath);
 
     // Verifica se o arquivo existe
     const [exists] = await file.exists();
     if (!exists) {
+      console.log("❌ [request-download] File does not exist:", filePath);
       return res.status(404).json({ error: "Arquivo não encontrado" });
     }
+
+    console.log("✅ [request-download] File exists, generating signed URL");
 
     // Gera URL assinada para download (válida por 1 hora)
     const [url] = await file.getSignedUrl({
@@ -121,12 +131,14 @@ router.post("/request-download", async (req, res) => {
       expires: Date.now() + 60 * 60 * 1000,
     });
 
+    console.log("✅ [request-download] Signed URL generated");
+
     res.status(200).json({
       url,
       expiresIn: "1 hora",
     });
   } catch (error) {
-    console.error("Erro ao gerar URL de download:", error);
+    console.error("❌ [request-download] Error:", error);
     res.status(500).json({
       error: "Falha ao gerar URL de download",
       details: error.message,
