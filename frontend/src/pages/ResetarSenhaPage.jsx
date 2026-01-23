@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { getApiUrl, fetchWithAuth } from "../config/api";
+import { getApiUrl } from "../config/api";
 import "../css/App.css";
 import "../css/Login.css";
 
@@ -37,7 +37,7 @@ const ResetarSenhaPage = () => {
     }
 
     try {
-      const resp = await fetchWithAuth("/resetar-senha", {
+      const resp = await fetch(getApiUrl("/resetar-senha"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
