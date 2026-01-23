@@ -8,6 +8,10 @@ const path = require("path");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const xlsx = require("xlsx");
+
+console.log("🚀 [BACKEND] Iniciando servidor...");
+console.log("🚀 [BACKEND] Porta configurada:", process.env.PORT || 3001);
+console.log("🚀 [BACKEND] Ambiente:", process.env.NODE_ENV || "development");
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
@@ -69,6 +73,22 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
+// Middleware para logar todas as requisições
+app.use((req, res, next) => {
+  console.log(`📨 [REQUEST] ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  console.log(`📨 [REQUEST] Headers:`, {
+    'content-type': req.headers['content-type'],
+    'user-agent': req.headers['user-agent']?.substring(0, 50),
+    'origin': req.headers.origin,
+  });
+
+  if (req.method === 'POST' && req.body && Object.keys(req.body).length > 0) {
+    console.log(`📨 [REQUEST] Body:`, JSON.stringify(req.body, null, 2));
+  }
+
+  next();
+});
 
 // Middleware para prevenir cache de páginas autenticadas
 app.use((req, res, next) => {
