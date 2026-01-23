@@ -94,26 +94,52 @@ async function sendResetEmail(to, resetLink) {
     const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } =
       process.env;
 
-    console.log("📧 [sendResetEmail] Iniciando envio de email");
-    console.log("📧 [sendResetEmail] SMTP_HOST:", SMTP_HOST ? "Configurado" : "Não configurado");
-    console.log("📧 [sendResetEmail] SMTP_USER:", SMTP_USER);
+    console.log("📧 [sendResetEmail] ======= INÍCIO DO ENVIO DE EMAIL =======");
+    console.log("📧 [sendResetEmail] Destinatário:", to);
+    console.log("📧 [sendResetEmail] Link de reset:", resetLink);
+    console.log("📧 [sendResetEmail] SMTP_HOST:", SMTP_HOST);
+    console.log("📧 [sendResetEmail] SMTP_PORT:", SMTP_PORT);
+    console.log("📧 [sendResetEmail] SMTP_USER:", SMTP_USER ? "***" + SMTP_USER.slice(-10) : "Não definido");
+    console.log("📧 [sendResetEmail] SMTP_PASS:", SMTP_PASS ? "***" + SMTP_PASS.slice(-5) : "Não definido");
     console.log("📧 [sendResetEmail] EMAIL_FROM:", EMAIL_FROM);
 
     if (!SMTP_HOST) {
-      console.log("❌ [sendResetEmail] SMTP não configurado. Link de recuperação:", resetLink);
-      return;
+      console.log("❌ [sendResetEmail] SMTP_HOST não configurado - abortando envio");
+      return false;
+    }
+
+    if (!SMTP_USER || !SMTP_PASS) {
+      console.log("❌ [sendResetEmail] Credenciais SMTP incompletas");
+      console.log("❌ [sendResetEmail] SMTP_USER:", !!SMTP_USER);
+      console.log("❌ [sendResetEmail] SMTP_PASS:", !!SMTP_PASS);
+      return false;
     }
 
     console.log("📧 [sendResetEmail] Criando transporter...");
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT ? parseInt(SMTP_PORT) : 587,
-      secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      secure: false, // false para TLS
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+      // Adicionar opções de debug
+      debug: true,
+      logger: true,
     });
 
-    console.log("📧 [sendResetEmail] Enviando email para:", to);
-    const result = await transporter.sendMail({
+    console.log("📧 [sendResetEmail] Verificando conexão com SMTP...");
+    try {
+      await transporter.verify();
+      console.log("✅ [sendResetEmail] Conexão SMTP verificada com sucesso");
+    } catch (verifyError) {
+      console.error("❌ [sendResetEmail] Falha na verificação SMTP:", verifyError.message);
+      throw verifyError;
+    }
+
+    console.log("📧 [sendResetEmail] Enviando email...");
+    const mailOptions = {
       from: EMAIL_FROM || SMTP_USER,
       to: to,
       subject: "Recuperação de senha - Sistema Escolar",
@@ -135,16 +161,33 @@ async function sendResetEmail(to, resetLink) {
           <p style="color: #666; font-size: 12px;">Este é um email automático, não responda a esta mensagem.</p>
         </div>
       `,
+    };
+
+    console.log("📧 [sendResetEmail] Mail options:", {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
     });
 
-    console.log("✅ [sendResetEmail] Email enviado com sucesso para:", to);
+    const result = await transporter.sendMail(mailOptions);
+
+    console.log("✅ [sendResetEmail] Email enviado com sucesso!");
     console.log("📧 [sendResetEmail] Message ID:", result.messageId);
+    console.log("📧 [sendResetEmail] Response:", result.response);
+    console.log("📧 [sendResetEmail] ======= FIM DO ENVIO =======");
+
+    return true;
 
   } catch (err) {
-    console.error("❌ [sendResetEmail] Falha ao enviar e-mail");
-    console.error("❌ [sendResetEmail] Link de recuperação:", resetLink);
-    console.error("❌ [sendResetEmail] Erro:", err.message);
-    console.error("❌ [sendResetEmail] Stack:", err.stack);
+    console.error("❌ [sendResetEmail] ======= ERRO NO ENVIO =======");
+    console.error("❌ [sendResetEmail] Tipo do erro:", err.constructor.name);
+    console.error("❌ [sendResetEmail] Mensagem:", err.message);
+    console.error("❌ [sendResetEmail] Código do erro:", err.code);
+    console.error("❌ [sendResetEmail] Comando de resposta:", err.response);
+    console.error("❌ [sendResetEmail] Stack trace:", err.stack);
+    console.error("❌ [sendResetEmail] ======= FIM DO ERRO =======");
+
+    return false;
   }
 }
 
@@ -405,9 +448,9 @@ function normalizePeriodo(value) {
 // Início do fluxo de recuperação de senha
 app.post("/recuperar-senha", async (req, res) => {
   try {
-    console.log("🔑 [recuperar-senha] Solicitação recebida");
+    console.log("🔑 [recuperar-senha] ======= NOVA SOLICITAÇÃO =======");
     const { email } = req.body;
-    console.log("🔑 [recuperar-senha] Email:", email);
+    console.log("🔑 [recuperar-senha] Email recebido:", email);
 
     if (!email) {
       console.log("❌ [recuperar-senha] Email não fornecido");
@@ -428,12 +471,12 @@ app.post("/recuperar-senha", async (req, res) => {
     };
 
     if (userQuery.rows.length === 0) {
-      console.log("❌ [recuperar-senha] Usuário não encontrado");
+      console.log("❌ [recuperar-senha] Usuário não encontrado - retornando resposta genérica");
       return res.status(200).json(genericMsg);
     }
 
     const user = userQuery.rows[0];
-    console.log("✅ [recuperar-senha] Usuário encontrado:", user.email);
+    console.log("✅ [recuperar-senha] Usuário encontrado:", user.email, "(ID:", user.id + ")");
 
     const resetToken = jwt.sign(
       { type: "password_reset", userId: user.id, email: user.email },
@@ -449,12 +492,20 @@ app.post("/recuperar-senha", async (req, res) => {
     )}/resetar-senha?token=${encodeURIComponent(resetToken)}`;
 
     console.log("🔗 [recuperar-senha] Link gerado:", resetLink);
+    console.log("🔗 [recuperar-senha] RESET_LINK_ORIGIN:", RESET_LINK_ORIGIN);
+    console.log("🔗 [recuperar-senha] FRONTEND_ORIGIN:", FRONTEND_ORIGIN);
 
     // Tenta enviar o e-mail; se SMTP não estiver configurado, loga o link
     console.log("📧 [recuperar-senha] Chamando sendResetEmail...");
-    await sendResetEmail(user.email, resetLink);
+    const emailSent = await sendResetEmail(user.email, resetLink);
 
-    console.log("✅ [recuperar-senha] Processo concluído");
+    if (emailSent) {
+      console.log("✅ [recuperar-senha] Email enviado com sucesso");
+    } else {
+      console.log("❌ [recuperar-senha] Falha no envio do email");
+    }
+
+    console.log("🔑 [recuperar-senha] ======= FIM DA SOLICITAÇÃO =======");
     return res.status(200).json(genericMsg);
   } catch (err) {
     console.error("❌ [recuperar-senha] Erro:", err);
