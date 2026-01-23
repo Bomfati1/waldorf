@@ -27,13 +27,14 @@ const RecuperarSenhaPage = () => {
         setMensagemTipo("success");
       } else {
         setMensagem(
-          data?.error || "Erro ao enviar email de recuperação. Tente novamente."
+          data?.error ||
+            "Erro ao enviar email de recuperação. Tente novamente.",
         );
         setMensagemTipo("error");
       }
     } catch (error) {
       setMensagem(
-        "Erro ao conectar com o servidor. Tente novamente mais tarde."
+        "Erro ao conectar com o servidor. Tente novamente mais tarde.",
       );
       setMensagemTipo("error");
     }
