@@ -108,102 +108,194 @@ app.use("/api/upload", uploadRoutes);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+async function sendEmailViaAPI(to, resetLink, apiKey) {
+  console.log("📧 [sendEmailViaAPI] Enviando via API HTTP...");
+
+  // Detectar qual serviço usar baseado na chave
+  const isResend = apiKey.startsWith('re_');
+  const isSendGrid = apiKey.startsWith('SG.');
+
+  if (isResend) {
+    console.log("📧 [sendEmailViaAPI] Usando Resend API");
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'onboarding@resend.dev', // Domínio verificado do Resend
+        to: [to],
+        subject: 'Recuperação de senha - Sistema Escolar',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333; text-align: center;">Recuperação de Senha</h2>
+            <p>Olá,</p>
+            <p>Você solicitou a recuperação de senha para sua conta no Sistema Escolar.</p>
+            <p>Para redefinir sua senha, clique no botão abaixo:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Redefinir Senha</a>
+            </div>
+            <p>Ou copie e cole este link no seu navegador:</p>
+            <p style="word-break: break-all; color: #666;">${resetLink}</p>
+            <p><strong>Importante:</strong> Este link expira em 10 minutos por motivos de segurança.</p>
+            <p>Se você não solicitou esta recuperação de senha, ignore este email.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 12px;">Este é um email automático, não responda a esta mensagem.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Resend API error: ${response.status} - ${error}`);
+    }
+
+    const result = await response.json();
+    console.log("✅ [sendEmailViaAPI] Email enviado via Resend:", result.id);
+    return true;
+
+  } else if (isSendGrid) {
+    console.log("📧 [sendEmailViaAPI] Usando SendGrid API");
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{
+          to: [{ email: to }],
+        }],
+        from: { email: 'onboarding@resend.dev', name: 'Sistema Escolar' }, // Domínio verificado
+        subject: 'Recuperação de senha - Sistema Escolar',
+        content: [{
+          type: 'text/html',
+          value: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #333; text-align: center;">Recuperação de Senha</h2>
+              <p>Olá,</p>
+              <p>Você solicitou a recuperação de senha para sua conta no Sistema Escolar.</p>
+              <p>Para redefinir sua senha, clique no botão abaixo:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Redefinir Senha</a>
+              </div>
+              <p>Ou copie e cole este link no seu navegador:</p>
+              <p style="word-break: break-all; color: #666;">${resetLink}</p>
+              <p><strong>Importante:</strong> Este link expira em 10 minutos por motivos de segurança.</p>
+              <p>Se você não solicitou esta recuperação de senha, ignore este email.</p>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+              <p style="color: #666; font-size: 12px;">Este é um email automático, não responda a esta mensagem.</p>
+            </div>
+          `,
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`SendGrid API error: ${response.status} - ${error}`);
+    }
+
+    console.log("✅ [sendEmailViaAPI] Email enviado via SendGrid");
+    return true;
+  }
+
+  throw new Error('API key format not recognized');
+}
+
+async function sendEmailViaSMTP(to, resetLink) {
+  console.log("📧 [sendEmailViaSMTP] Enviando via SMTP...");
+  const nodemailer = require("nodemailer");
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } = process.env;
+
+  console.log("📧 [sendEmailViaSMTP] SMTP_HOST:", SMTP_HOST);
+  console.log("📧 [sendEmailViaSMTP] SMTP_PORT:", SMTP_PORT);
+  console.log("📧 [sendEmailViaSMTP] SMTP_USER:", SMTP_USER ? "***" + SMTP_USER.slice(-10) : "Não definido");
+  console.log("📧 [sendEmailViaSMTP] SMTP_PASS:", SMTP_PASS ? "***" + SMTP_PASS.slice(-5) : "Não definido");
+  console.log("📧 [sendEmailViaSMTP] EMAIL_FROM:", EMAIL_FROM);
+
+  if (!SMTP_HOST) {
+    throw new Error("SMTP_HOST não configurado");
+  }
+
+  if (!SMTP_USER || !SMTP_PASS) {
+    throw new Error("Credenciais SMTP incompletas");
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT ? parseInt(SMTP_PORT) : 587,
+    secure: false,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+    debug: true,
+    logger: true,
+  });
+
+  console.log("📧 [sendEmailViaSMTP] Verificando conexão...");
+  await transporter.verify();
+  console.log("✅ [sendEmailViaSMTP] Conexão verificada");
+
+  const mailOptions = {
+    from: EMAIL_FROM || SMTP_USER,
+    to: to,
+    subject: "Recuperação de senha - Sistema Escolar",
+    text: `Para redefinir sua senha, acesse: ${resetLink}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; text-align: center;">Recuperação de Senha</h2>
+        <p>Olá,</p>
+        <p>Você solicitou a recuperação de senha para sua conta no Sistema Escolar.</p>
+        <p>Para redefinir sua senha, clique no botão abaixo:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Redefinir Senha</a>
+        </div>
+        <p>Ou copie e cole este link no seu navegador:</p>
+        <p style="word-break: break-all; color: #666;">${resetLink}</p>
+        <p><strong>Importante:</strong> Este link expira em 10 minutos por motivos de segurança.</p>
+        <p>Se você não solicitou esta recuperação de senha, ignore este email.</p>
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #666; font-size: 12px;">Este é um email automático, não responda a esta mensagem.</p>
+      </div>
+    `,
+  };
+
+  const result = await transporter.sendMail(mailOptions);
+  console.log("✅ [sendEmailViaSMTP] Email enviado:", result.messageId);
+  return true;
+}
+
 async function sendResetEmail(to, resetLink) {
   try {
-    const nodemailer = require("nodemailer");
-    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } =
-      process.env;
-
     console.log("📧 [sendResetEmail] ======= INÍCIO DO ENVIO DE EMAIL =======");
     console.log("📧 [sendResetEmail] Destinatário:", to);
     console.log("📧 [sendResetEmail] Link de reset:", resetLink);
-    console.log("📧 [sendResetEmail] SMTP_HOST:", SMTP_HOST);
-    console.log("📧 [sendResetEmail] SMTP_PORT:", SMTP_PORT);
-    console.log("📧 [sendResetEmail] SMTP_USER:", SMTP_USER ? "***" + SMTP_USER.slice(-10) : "Não definido");
-    console.log("📧 [sendResetEmail] SMTP_PASS:", SMTP_PASS ? "***" + SMTP_PASS.slice(-5) : "Não definido");
-    console.log("📧 [sendResetEmail] EMAIL_FROM:", EMAIL_FROM);
 
-    if (!SMTP_HOST) {
-      console.log("❌ [sendResetEmail] SMTP_HOST não configurado - abortando envio");
-      return false;
+    // Tentar usar API HTTP primeiro (mais confiável em produção)
+    const emailApiKey = process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY;
+
+    if (emailApiKey) {
+      console.log("📧 [sendResetEmail] Tentando enviar via API HTTP...");
+      try {
+        return await sendEmailViaAPI(to, resetLink, emailApiKey);
+      } catch (apiError) {
+        console.log("📧 [sendResetEmail] API HTTP falhou, tentando SMTP...");
+        console.error("❌ [sendResetEmail] Erro na API:", apiError.message);
+      }
     }
 
-    if (!SMTP_USER || !SMTP_PASS) {
-      console.log("❌ [sendResetEmail] Credenciais SMTP incompletas");
-      console.log("❌ [sendResetEmail] SMTP_USER:", !!SMTP_USER);
-      console.log("❌ [sendResetEmail] SMTP_PASS:", !!SMTP_PASS);
-      return false;
-    }
-
-    console.log("📧 [sendResetEmail] Criando transporter...");
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT ? parseInt(SMTP_PORT) : 587,
-      secure: false, // false para TLS
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-      // Adicionar opções de debug
-      debug: true,
-      logger: true,
-    });
-
-    console.log("📧 [sendResetEmail] Verificando conexão com SMTP...");
-    try {
-      await transporter.verify();
-      console.log("✅ [sendResetEmail] Conexão SMTP verificada com sucesso");
-    } catch (verifyError) {
-      console.error("❌ [sendResetEmail] Falha na verificação SMTP:", verifyError.message);
-      throw verifyError;
-    }
-
-    console.log("📧 [sendResetEmail] Enviando email...");
-    const mailOptions = {
-      from: EMAIL_FROM || SMTP_USER,
-      to: to,
-      subject: "Recuperação de senha - Sistema Escolar",
-      text: `Para redefinir sua senha, acesse: ${resetLink}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333; text-align: center;">Recuperação de Senha</h2>
-          <p>Olá,</p>
-          <p>Você solicitou a recuperação de senha para sua conta no Sistema Escolar.</p>
-          <p>Para redefinir sua senha, clique no botão abaixo:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Redefinir Senha</a>
-          </div>
-          <p>Ou copie e cole este link no seu navegador:</p>
-          <p style="word-break: break-all; color: #666;">${resetLink}</p>
-          <p><strong>Importante:</strong> Este link expira em 10 minutos por motivos de segurança.</p>
-          <p>Se você não solicitou esta recuperação de senha, ignore este email.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-          <p style="color: #666; font-size: 12px;">Este é um email automático, não responda a esta mensagem.</p>
-        </div>
-      `,
-    };
-
-    console.log("📧 [sendResetEmail] Mail options:", {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject,
-    });
-
-    const result = await transporter.sendMail(mailOptions);
-
-    console.log("✅ [sendResetEmail] Email enviado com sucesso!");
-    console.log("📧 [sendResetEmail] Message ID:", result.messageId);
-    console.log("📧 [sendResetEmail] Response:", result.response);
-    console.log("📧 [sendResetEmail] ======= FIM DO ENVIO =======");
-
-    return true;
+    // Fallback para SMTP
+    console.log("📧 [sendResetEmail] Usando SMTP como fallback...");
+    return await sendEmailViaSMTP(to, resetLink);
 
   } catch (err) {
-    console.error("❌ [sendResetEmail] ======= ERRO NO ENVIO =======");
+    console.error("❌ [sendResetEmail] ======= ERRO GERAL =======");
     console.error("❌ [sendResetEmail] Tipo do erro:", err.constructor.name);
     console.error("❌ [sendResetEmail] Mensagem:", err.message);
-    console.error("❌ [sendResetEmail] Código do erro:", err.code);
-    console.error("❌ [sendResetEmail] Comando de resposta:", err.response);
     console.error("❌ [sendResetEmail] Stack trace:", err.stack);
     console.error("❌ [sendResetEmail] ======= FIM DO ERRO =======");
 
