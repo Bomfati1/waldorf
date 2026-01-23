@@ -2,13 +2,19 @@ const admin = require("firebase-admin");
 
 // Validação das variáveis de ambiente
 if (!process.env.FIREBASE_PROJECT_ID) {
-  throw new Error("FIREBASE_PROJECT_ID não está definido nas variáveis de ambiente");
+  throw new Error(
+    "FIREBASE_PROJECT_ID não está definido nas variáveis de ambiente",
+  );
 }
 if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  throw new Error("FIREBASE_CLIENT_EMAIL não está definido nas variáveis de ambiente");
+  throw new Error(
+    "FIREBASE_CLIENT_EMAIL não está definido nas variáveis de ambiente",
+  );
 }
 if (!process.env.FIREBASE_PRIVATE_KEY) {
-  throw new Error("FIREBASE_PRIVATE_KEY não está definido nas variáveis de ambiente");
+  throw new Error(
+    "FIREBASE_PRIVATE_KEY não está definido nas variáveis de ambiente",
+  );
 }
 
 const firebaseConfig = {
@@ -23,7 +29,9 @@ const firebaseConfig = {
 
 // Obtém o nome do bucket do .env ou usa o padrão
 // Remove o prefixo gs:// se presente
-let bucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
+let bucketName =
+  process.env.FIREBASE_STORAGE_BUCKET ||
+  `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
 if (bucketName && bucketName.startsWith("gs://")) {
   bucketName = bucketName.replace("gs://", "");
 }

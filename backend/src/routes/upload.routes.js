@@ -17,7 +17,10 @@ router.post("/request-upload", async (req, res) => {
   try {
     const { fileName, fileType, category, refId } = req.body;
 
-    console.log("📋 [request-upload] RECEIVED BODY:", JSON.stringify(req.body, null, 2));
+    console.log(
+      "📋 [request-upload] RECEIVED BODY:",
+      JSON.stringify(req.body, null, 2),
+    );
     console.log("📋 [request-upload] Parâmetros recebidos:", {
       fileName,
       fileType,
@@ -27,7 +30,13 @@ router.post("/request-upload", async (req, res) => {
     });
 
     // Validação básica
-    if (!fileName || !fileType || !category || refId === undefined || refId === null) {
+    if (
+      !fileName ||
+      !fileType ||
+      !category ||
+      refId === undefined ||
+      refId === null
+    ) {
       console.log("❌ [request-upload] Parâmetros faltando:", {
         hasFileName: !!fileName,
         hasFileType: !!fileType,

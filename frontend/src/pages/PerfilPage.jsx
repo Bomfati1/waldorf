@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl, API_URL, fetchWithAuth } from "../config/api"; // Importar o hook
-import { getImageUrl, uploadFotoPerfilUsuario, excluirFotoPerfilUsuario } from "../utils/firebaseUpload";
+import {
+  getImageUrl,
+  uploadFotoPerfilUsuario,
+  excluirFotoPerfilUsuario,
+} from "../utils/firebaseUpload";
 import "../css/PerfilPage.css"; // Vamos criar este CSS a seguir
 
 const PerfilPage = () => {
@@ -44,7 +48,10 @@ const PerfilPage = () => {
       });
 
       // Upload para Firebase
-      const caminhoFirebase = await uploadFotoPerfilUsuario(file, String(user.id));
+      const caminhoFirebase = await uploadFotoPerfilUsuario(
+        file,
+        String(user.id),
+      );
 
       // Atualizar no backend (salvar caminho no banco)
       const response = await fetchWithAuth("/usuario/atualizar-foto", {

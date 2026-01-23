@@ -2052,9 +2052,11 @@ app.put("/alunos/:id", async (req, res) => {
           `[UPDATE ALUNO] Removendo aluno ${id} de todas as turmas (Sem Turma)`,
         );
         await db.query("DELETE FROM turma_alunos WHERE aluno_id = $1", [id]);
-        
+
         // Define o aluno como inativo quando removido de todas as turmas
-        await db.query("UPDATE alunos SET status_aluno = FALSE WHERE id = $1", [id]);
+        await db.query("UPDATE alunos SET status_aluno = FALSE WHERE id = $1", [
+          id,
+        ]);
       } else if (turma_id !== "") {
         // Se turma_id for fornecido, atualiza ou insere
         const turmaIdNum = Number(turma_id);
@@ -2063,7 +2065,9 @@ app.put("/alunos/:id", async (req, res) => {
         );
 
         // Ativa o aluno quando uma turma é atribuída
-        await db.query("UPDATE alunos SET status_aluno = TRUE WHERE id = $1", [id]);
+        await db.query("UPDATE alunos SET status_aluno = TRUE WHERE id = $1", [
+          id,
+        ]);
 
         // Verifica se já existe a relação ESPECÍFICA (aluno + turma)
         const rel = await db.query(
@@ -2336,26 +2340,38 @@ app.delete("/turmas/ano/:anoLetivo", authenticateToken, async (req, res) => {
         `SELECT caminho_firebase FROM planejamento_anexos_firebase WHERE planejamento_id IN (${planPlaceholders})`,
         planIds,
       );
-      caminhosFirebase = anexosFirebaseResult.rows.map(row => row.caminho_firebase);
+      caminhosFirebase = anexosFirebaseResult.rows.map(
+        (row) => row.caminho_firebase,
+      );
     }
 
     // 3) Excluir arquivos do Firebase
-    console.log("🗑️ [DELETE TURMAS ANO] Arquivos Firebase para excluir:", caminhosFirebase);
+    console.log(
+      "🗑️ [DELETE TURMAS ANO] Arquivos Firebase para excluir:",
+      caminhosFirebase,
+    );
 
     const { bucket } = require("./src/config/firebase");
     for (const caminho of caminhosFirebase) {
-      if (caminho && caminho.startsWith('anexos_planejamento/')) {
+      if (caminho && caminho.startsWith("anexos_planejamento/")) {
         try {
           const file = bucket.file(caminho);
           const [exists] = await file.exists();
           if (exists) {
             await file.delete();
-            console.log(`✅ [DELETE TURMAS ANO] Arquivo Firebase excluído: ${caminho}`);
+            console.log(
+              `✅ [DELETE TURMAS ANO] Arquivo Firebase excluído: ${caminho}`,
+            );
           } else {
-            console.log(`⚠️ [DELETE TURMAS ANO] Arquivo Firebase não encontrado: ${caminho}`);
+            console.log(
+              `⚠️ [DELETE TURMAS ANO] Arquivo Firebase não encontrado: ${caminho}`,
+            );
           }
         } catch (error) {
-          console.warn(`[DELETE TURMAS ANO] Erro ao excluir arquivo Firebase ${caminho}:`, error.message);
+          console.warn(
+            `[DELETE TURMAS ANO] Erro ao excluir arquivo Firebase ${caminho}:`,
+            error.message,
+          );
         }
       }
     }
@@ -2513,26 +2529,38 @@ app.delete(
           "SELECT caminho_firebase FROM planejamento_anexos_firebase WHERE planejamento_id = ANY($1::int[])",
           [planIds],
         );
-        caminhosFirebase = anexosFirebaseResult.rows.map(row => row.caminho_firebase);
+        caminhosFirebase = anexosFirebaseResult.rows.map(
+          (row) => row.caminho_firebase,
+        );
       }
 
       // 3) Excluir arquivos do Firebase
-      console.log("🗑️ [DELETE TURMA] Arquivos Firebase para excluir:", caminhosFirebase);
+      console.log(
+        "🗑️ [DELETE TURMA] Arquivos Firebase para excluir:",
+        caminhosFirebase,
+      );
 
       const { bucket } = require("./src/config/firebase");
       for (const caminho of caminhosFirebase) {
-        if (caminho && caminho.startsWith('anexos_planejamento/')) {
+        if (caminho && caminho.startsWith("anexos_planejamento/")) {
           try {
             const file = bucket.file(caminho);
             const [exists] = await file.exists();
             if (exists) {
               await file.delete();
-              console.log(`✅ [DELETE TURMA] Arquivo Firebase excluído: ${caminho}`);
+              console.log(
+                `✅ [DELETE TURMA] Arquivo Firebase excluído: ${caminho}`,
+              );
             } else {
-              console.log(`⚠️ [DELETE TURMA] Arquivo Firebase não encontrado: ${caminho}`);
+              console.log(
+                `⚠️ [DELETE TURMA] Arquivo Firebase não encontrado: ${caminho}`,
+              );
             }
           } catch (error) {
-            console.warn(`[DELETE TURMA] Erro ao excluir arquivo Firebase ${caminho}:`, error.message);
+            console.warn(
+              `[DELETE TURMA] Erro ao excluir arquivo Firebase ${caminho}:`,
+              error.message,
+            );
           }
         }
       }
@@ -2953,16 +2981,21 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
       "SELECT caminho_arquivo FROM aluno_anexos WHERE aluno_id = $1",
       [alunoId],
     );
-    const caminhosAnexos = anexosResult.rows.map(row => row.caminho_arquivo);
+    const caminhosAnexos = anexosResult.rows.map((row) => row.caminho_arquivo);
 
     // 3) Excluir arquivos do Firebase (foto e anexos)
     const arquivosParaExcluir = [];
-    if (foto_perfil && foto_perfil.startsWith('imagem_aluno/')) {
+    if (foto_perfil && foto_perfil.startsWith("imagem_aluno/")) {
       arquivosParaExcluir.push(foto_perfil);
     }
-    arquivosParaExcluir.push(...caminhosAnexos.filter(c => c && c.startsWith('anexos_aluno/')));
+    arquivosParaExcluir.push(
+      ...caminhosAnexos.filter((c) => c && c.startsWith("anexos_aluno/")),
+    );
 
-    console.log("🗑️ [DELETE ALUNO] Arquivos para excluir do Firebase:", arquivosParaExcluir);
+    console.log(
+      "🗑️ [DELETE ALUNO] Arquivos para excluir do Firebase:",
+      arquivosParaExcluir,
+    );
 
     // Excluir arquivos do Firebase usando o bucket diretamente
     const { bucket } = require("./src/config/firebase");
@@ -2977,7 +3010,10 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
           console.log(`⚠️ [DELETE ALUNO] Arquivo não encontrado: ${caminho}`);
         }
       } catch (error) {
-        console.warn(`[DELETE ALUNO] Erro ao excluir arquivo ${caminho}:`, error.message);
+        console.warn(
+          `[DELETE ALUNO] Erro ao excluir arquivo ${caminho}:`,
+          error.message,
+        );
       }
     }
 
@@ -4070,19 +4106,26 @@ app.delete("/planejamentos/anexos/:id", authenticateToken, async (req, res) => {
     const caminhoFirebase = selectResult.rows[0].caminho_firebase;
 
     // Excluir arquivo do Firebase se existir
-    if (caminhoFirebase && caminhoFirebase.startsWith('anexos_planejamento/')) {
+    if (caminhoFirebase && caminhoFirebase.startsWith("anexos_planejamento/")) {
       try {
         const { bucket } = require("./src/config/firebase");
         const file = bucket.file(caminhoFirebase);
         const [exists] = await file.exists();
         if (exists) {
           await file.delete();
-          console.log(`✅ [DELETE ANEXO PLANEJAMENTO] Arquivo Firebase excluído: ${caminhoFirebase}`);
+          console.log(
+            `✅ [DELETE ANEXO PLANEJAMENTO] Arquivo Firebase excluído: ${caminhoFirebase}`,
+          );
         } else {
-          console.log(`⚠️ [DELETE ANEXO PLANEJAMENTO] Arquivo Firebase não encontrado: ${caminhoFirebase}`);
+          console.log(
+            `⚠️ [DELETE ANEXO PLANEJAMENTO] Arquivo Firebase não encontrado: ${caminhoFirebase}`,
+          );
         }
       } catch (error) {
-        console.warn(`[DELETE ANEXO PLANEJAMENTO] Erro ao excluir arquivo Firebase ${caminhoFirebase}:`, error.message);
+        console.warn(
+          `[DELETE ANEXO PLANEJAMENTO] Erro ao excluir arquivo Firebase ${caminhoFirebase}:`,
+          error.message,
+        );
       }
     }
 
@@ -4859,25 +4902,37 @@ app.delete(
         [id],
       );
 
-      const caminhosFirebase = anexosFirebaseResult.rows.map(row => row.caminho_firebase);
+      const caminhosFirebase = anexosFirebaseResult.rows.map(
+        (row) => row.caminho_firebase,
+      );
 
       // 2) Excluir arquivos do Firebase
-      console.log("🗑️ [DELETE PLANEJAMENTO] Arquivos Firebase para excluir:", caminhosFirebase);
+      console.log(
+        "🗑️ [DELETE PLANEJAMENTO] Arquivos Firebase para excluir:",
+        caminhosFirebase,
+      );
 
       const { bucket } = require("./src/config/firebase");
       for (const caminho of caminhosFirebase) {
-        if (caminho && caminho.startsWith('anexos_planejamento/')) {
+        if (caminho && caminho.startsWith("anexos_planejamento/")) {
           try {
             const file = bucket.file(caminho);
             const [exists] = await file.exists();
             if (exists) {
               await file.delete();
-              console.log(`✅ [DELETE PLANEJAMENTO] Arquivo Firebase excluído: ${caminho}`);
+              console.log(
+                `✅ [DELETE PLANEJAMENTO] Arquivo Firebase excluído: ${caminho}`,
+              );
             } else {
-              console.log(`⚠️ [DELETE PLANEJAMENTO] Arquivo Firebase não encontrado: ${caminho}`);
+              console.log(
+                `⚠️ [DELETE PLANEJAMENTO] Arquivo Firebase não encontrado: ${caminho}`,
+              );
             }
           } catch (error) {
-            console.warn(`[DELETE PLANEJAMENTO] Erro ao excluir arquivo Firebase ${caminho}:`, error.message);
+            console.warn(
+              `[DELETE PLANEJAMENTO] Erro ao excluir arquivo Firebase ${caminho}:`,
+              error.message,
+            );
           }
         }
       }
@@ -5234,7 +5289,9 @@ app.put("/usuario/atualizar-foto", authenticateToken, async (req, res) => {
 
     // Validação básica
     if (foto_perfil !== null && typeof foto_perfil !== "string") {
-      return res.status(400).json({ error: "foto_perfil deve ser uma string ou null." });
+      return res
+        .status(400)
+        .json({ error: "foto_perfil deve ser uma string ou null." });
     }
 
     // Atualiza a foto do usuário no banco de dados

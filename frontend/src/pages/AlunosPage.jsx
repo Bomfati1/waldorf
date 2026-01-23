@@ -217,7 +217,10 @@ const AlunosPage = () => {
           const url = await getImageUrl(aluno.foto_perfil);
           urls[aluno.id] = url;
         } catch (error) {
-          console.error(`Erro ao carregar imagem para aluno ${aluno.id}:`, error);
+          console.error(
+            `Erro ao carregar imagem para aluno ${aluno.id}:`,
+            error,
+          );
           urls[aluno.id] = null;
         }
       } else {

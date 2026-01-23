@@ -234,7 +234,12 @@ export async function getImageUrl(caminhoImagem) {
  * @returns {Promise<string>} - Caminho do arquivo no Firebase
  */
 export async function uploadFotoPerfilUsuario(arquivo, usuarioId, onProgress) {
-  return await uploadAoFirebase(arquivo, "imagem_perfil", usuarioId, onProgress);
+  return await uploadAoFirebase(
+    arquivo,
+    "imagem_perfil",
+    usuarioId,
+    onProgress,
+  );
 }
 
 /**
