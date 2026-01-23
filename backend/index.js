@@ -117,6 +117,8 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
   const isResend = apiKey.startsWith("re_");
   const isSendGrid = apiKey.startsWith("SG.");
 
+  const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+
   if (isResend) {
     console.log("📧 [sendEmailViaAPI] Usando Resend API");
     const response = await fetch("https://api.resend.com/emails", {
@@ -126,7 +128,7 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "onboarding@resend.dev", // Domínio verificado do Resend
+        from: fromEmail, // Usar variável de ambiente ou padrão
         to: [to],
         subject: "Recuperação de senha - Sistema Escolar",
         html: `
@@ -171,7 +173,7 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
             to: [{ email: to }],
           },
         ],
-        from: { email: "onboarding@resend.dev", name: "Sistema Escolar" }, // Domínio verificado
+        from: { email: fromEmail, name: "Sistema Escolar" }, // Usar variável de ambiente
         subject: "Recuperação de senha - Sistema Escolar",
         content: [
           {

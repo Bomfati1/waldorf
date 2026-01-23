@@ -20,6 +20,8 @@ async function testResendConfigurado() {
   try {
     console.log("📧 Testando envio via Resend API...");
 
+    const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -27,7 +29,7 @@ async function testResendConfigurado() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "onboarding@resend.dev", // Usando domínio verificado do Resend
+        from: fromEmail, // Usar variável de ambiente ou padrão
         to: ["matheusbomfati10@gmail.com"], // Usando seu email real
         subject: "Teste - Sistema Escolar Resend",
         html: `
