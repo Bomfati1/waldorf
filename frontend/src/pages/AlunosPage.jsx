@@ -6,6 +6,7 @@ import EditAlunoModal from "../components/EditAlunoModal";
 import ModalBase from "../components/ModalBase";
 import InputWithHint from "../components/InputWithHint";
 import SelectWithHint from "../components/SelectWithHint";
+import { getImageUrl } from "../utils/firebaseUpload";
 import "../css/AlunosPage.css";
 
 const AssignTurmaModal = ({ aluno, onClose, onAssign }) => {
@@ -164,6 +165,9 @@ const AlunosPage = () => {
     nivel: "",
   });
 
+  // Estado para armazenar URLs das imagens dos alunos
+  const [imageUrls, setImageUrls] = useState({});
+
   // Função para buscar todos os dados necessários
   const fetchData = async () => {
     setLoading(true);
@@ -192,7 +196,7 @@ const AlunosPage = () => {
 
       // Combina os alunos ativos e inativos em uma única lista e ordena alfabeticamente
       const todosAlunos = [...ativosData, ...inativosData].sort((a, b) =>
-        a.nome_completo.localeCompare(b.nome_completo, "pt-BR")
+        a.nome_completo.localeCompare(b.nome_completo, "pt-BR"),
       );
 
       setAlunos(todosAlunos);
@@ -204,9 +208,35 @@ const AlunosPage = () => {
     }
   };
 
+  // Função para carregar URLs das imagens dos alunos
+  const loadImageUrls = async (alunosList) => {
+    const urls = {};
+    for (const aluno of alunosList) {
+      if (aluno.foto_perfil) {
+        try {
+          const url = await getImageUrl(aluno.foto_perfil);
+          urls[aluno.id] = url;
+        } catch (error) {
+          console.error(`Erro ao carregar imagem para aluno ${aluno.id}:`, error);
+          urls[aluno.id] = null;
+        }
+      } else {
+        urls[aluno.id] = null;
+      }
+    }
+    setImageUrls(urls);
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Carregar URLs das imagens quando os alunos mudam
+  useEffect(() => {
+    if (alunos.length > 0) {
+      loadImageUrls(alunos);
+    }
+  }, [alunos]);
 
   // Lógica de filtragem e ordenação alfabética
   const filteredAlunos = useMemo(() => {
@@ -248,7 +278,7 @@ const AlunosPage = () => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     return new Date(
-      date.getTime() + date.getTimezoneOffset() * 60000
+      date.getTime() + date.getTimezoneOffset() * 60000,
     ).toLocaleDateString("pt-BR");
   };
 
@@ -276,7 +306,7 @@ const AlunosPage = () => {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(updatedData),
-        }
+        },
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
@@ -286,6 +316,7 @@ const AlunosPage = () => {
       fetchData(); // Recarrega os dados para mostrar as alterações
     } catch (err) {
       console.error(`Erro ao salvar: ${err.message}`);
+      throw err; // Re-throw para que o modal possa mostrar o erro
     }
   };
 
@@ -322,7 +353,7 @@ const AlunosPage = () => {
     // Substituindo window.confirm por uma abordagem que não bloqueia a UI
     // O ideal é usar um modal de confirmação para uma melhor experiência do usuário.
     const userConfirmed = window.confirm(
-      "Tem certeza que deseja excluir este aluno? A ação não pode ser desfeita."
+      "Tem certeza que deseja excluir este aluno? A ação não pode ser desfeita.",
     );
 
     if (userConfirmed) {
@@ -455,9 +486,9 @@ const AlunosPage = () => {
                     <tr key={aluno.id}>
                       <td>
                         <div className="table-photo">
-                          {aluno.foto_perfil ? (
+                          {imageUrls[aluno.id] ? (
                             <img
-                              src={`${API_URL}${aluno.foto_perfil}`}
+                              src={imageUrls[aluno.id]}
                               alt="Foto do aluno"
                               className="table-aluno-photo"
                             />
@@ -475,10 +506,10 @@ const AlunosPage = () => {
                       <td>
                         <span
                           className={`status-badge status-${
-                            aluno.status_aluno == 1 ? "ativo" : "inativo"
+                            aluno.status_aluno ? "ativo" : "inativo"
                           }`}
                         >
-                          {aluno.status_aluno == 1 ? "Ativo" : "Inativo"}
+                          {aluno.status_aluno ? "Ativo" : "Inativo"}
                         </span>
                       </td>
                       <td>

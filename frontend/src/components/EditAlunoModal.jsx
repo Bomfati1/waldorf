@@ -7,6 +7,12 @@ import InputWithHint from "./InputWithHint";
 import SelectWithHint from "./SelectWithHint";
 import TextareaWithHint from "./TextareaWithHint";
 import ResponsavelCPF from "./ResponsavelCPF";
+import {
+  AnexoAlunoUpload,
+  ListaAnexos,
+  ImagemAlunoUpload,
+} from "./FirebaseUploadComponents";
+import { getImageUrl } from "../utils/firebaseUpload";
 import jsPDF from "jspdf";
 import { drawHeader, drawFooter } from "../utils/pdfUtils";
 import "../css/FormLayout.css";
@@ -18,6 +24,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   const [formData, setFormData] = useState(alunoData);
   const [responsaveisList, setResponsaveisList] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [linkRespOpen, setLinkRespOpen] = useState(false);
@@ -30,7 +37,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [showAnexos, setShowAnexos] = useState(false);
   const [anexos, setAnexos] = useState([]);
-  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fotoUrl, setFotoUrl] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,17 +45,25 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     return () => closeModal(modalId);
   }, []);
 
+  useEffect(() => {
+    const loadFotoUrl = async () => {
+      const url = await getImageUrl(formData.foto_perfil);
+      setFotoUrl(url);
+    };
+    loadFotoUrl();
+  }, [formData.foto_perfil]);
+
   // Função para formatar telefone
   const formatPhone = (phone) => {
     if (!phone) return "";
     const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length === 11) {
       return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(
-        7
+        7,
       )}`;
     } else if (cleaned.length === 10) {
       return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(
-        6
+        6,
       )}`;
     }
     return phone;
@@ -64,7 +79,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
       try {
         const res = await fetch(
           getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis`),
-          { credentials: "include" }
+          { credentials: "include" },
         );
         if (res.ok) {
           const data = await res.json();
@@ -83,7 +98,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
       try {
         const res = await fetch(
           getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-          { credentials: "include" }
+          { credentials: "include" },
         );
         if (res.ok) {
           const data = await res.json();
@@ -102,124 +117,64 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   };
 
   const handlePhotoUpload = async (file) => {
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setMessage("Por favor, selecione apenas arquivos de imagem.");
-      setMessageType("error");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage("A imagem deve ter no máximo 5MB.");
-      setMessageType("error");
-      return;
-    }
-
-    setUploading(true);
-    setMessage("");
-    setMessageType("");
-
-    const uploadFormData = new FormData();
-    uploadFormData.append("alunoPhoto", file);
-
-    try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/upload-photo`),
-        {
-          method: "POST",
-          body: uploadFormData,
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(data.message);
-        setMessageType("success");
-        setFormData((prev) => ({ ...prev, foto_perfil: data.imageUrl }));
-      } else {
-        setMessage(data.error || "Erro ao fazer upload da foto.");
-        setMessageType("error");
-      }
-    } catch (error) {
-      setMessage("Erro de conexão. Tente novamente.");
-      setMessageType("error");
-    } finally {
-      setUploading(false);
-    }
+    // Esta função será substituída pelo ImagemAlunoUpload
   };
 
   const handleRemovePhoto = async () => {
-    if (!formData.foto_perfil) return;
+    // Esta função será substituída pelo ImagemAlunoUpload
+  };
 
-    if (!window.confirm("Tem certeza que deseja remover a foto do aluno?")) {
-      return;
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    setUploading(true);
+    setSaving(true);
     setMessage("");
     setMessageType("");
 
     try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/remove-photo`),
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
+      let turmaIdToSend;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(data.message);
-        setMessageType("success");
-        setFormData((prev) => ({ ...prev, foto_perfil: null }));
+      // Lógica para turma_id:
+      // - Se for "sem_turma", envia null para remover da turma
+      // - Se for vazio "", mantém undefined (não altera)
+      // - Se for um número, converte e envia
+      if (formData.turma_id === "sem_turma") {
+        turmaIdToSend = null;
+      } else if (formData.turma_id === "" || formData.turma_id === undefined) {
+        turmaIdToSend = undefined; // Mantém como está
       } else {
-        setMessage(data.error || "Erro ao remover a foto.");
-        setMessageType("error");
+        turmaIdToSend = Number(formData.turma_id);
       }
+
+      const payload = {
+        ...formData,
+        turma_id: turmaIdToSend,
+      };
+
+      console.log("[EDIT ALUNO] Payload enviado:", payload);
+      await onSave(payload);
+
+      setMessage("Alterações salvas com sucesso!");
+      setMessageType("success");
+
+      // Fechar modal após um pequeno delay para mostrar a mensagem de sucesso
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
-      setMessage("Erro de conexão. Tente novamente.");
+      setMessage("Erro ao salvar alterações. Tente novamente.");
       setMessageType("error");
+      console.error("Erro ao salvar:", error);
     } finally {
-      setUploading(false);
+      setSaving(false);
     }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    let turmaIdToSend;
-
-    // Lógica para turma_id:
-    // - Se for "sem_turma", envia null para remover da turma
-    // - Se for vazio "", mantém undefined (não altera)
-    // - Se for um número, converte e envia
-    if (formData.turma_id === "sem_turma") {
-      turmaIdToSend = null;
-    } else if (formData.turma_id === "" || formData.turma_id === undefined) {
-      turmaIdToSend = undefined; // Mantém como está
-    } else {
-      turmaIdToSend = Number(formData.turma_id);
-    }
-
-    const payload = {
-      ...formData,
-      turma_id: turmaIdToSend,
-    };
-
-    console.log("[EDIT ALUNO] Payload enviado:", payload);
-    onSave(payload);
   };
 
   const refetchAlunoDetalhes = async () => {
     try {
       const response = await fetch(
         getApiUrl(`/alunos/${alunoData.aluno_id}/detalhes`),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (response.ok) {
         const data = await response.json();
@@ -234,7 +189,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     try {
       const res = await fetch(
         getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis`),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (res.ok) {
         const data = await res.json();
@@ -255,7 +210,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ familia_id: respSelection.familiaId }),
-        }
+        },
       );
       const data = await resp.json();
       if (!resp.ok)
@@ -281,7 +236,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ familia_id: familiaId }),
-        }
+        },
       );
       const data = await resp.json();
       if (!resp.ok)
@@ -330,7 +285,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ familia_id: novo.id }),
-        }
+        },
       );
       const vincData = await vinc.json();
       if (!vinc.ok)
@@ -353,7 +308,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     try {
       const resp = await fetch(
         getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis/${familiaId}`),
-        { method: "DELETE", credentials: "include" }
+        { method: "DELETE", credentials: "include" },
       );
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Falha ao desvincular");
@@ -366,95 +321,6 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     }
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      setMessage("O arquivo deve ter no máximo 10MB.");
-      setMessageType("error");
-      return;
-    }
-
-    setUploadingFile(true);
-    setMessage("");
-
-    const formData = new FormData();
-    formData.append("arquivo", file);
-
-    try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-        {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erro ao fazer upload do arquivo");
-      }
-
-      setMessage("Arquivo enviado com sucesso!");
-      setMessageType("success");
-
-      // Recarregar lista de anexos
-      const res = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-        { credentials: "include" }
-      );
-      if (res.ok) {
-        const anexosData = await res.json();
-        setAnexos(Array.isArray(anexosData) ? anexosData : []);
-      }
-    } catch (error) {
-      setMessage(error.message);
-      setMessageType("error");
-    } finally {
-      setUploadingFile(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleDeleteAnexo = async (anexoId) => {
-    if (!window.confirm("Deseja realmente excluir este arquivo?")) return;
-
-    try {
-      const response = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos/${anexoId}`),
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erro ao excluir arquivo");
-      }
-
-      setMessage("Arquivo excluído com sucesso!");
-      setMessageType("success");
-
-      // Recarregar lista de anexos
-      const res = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-        { credentials: "include" }
-      );
-      if (res.ok) {
-        const anexosData = await res.json();
-        setAnexos(Array.isArray(anexosData) ? anexosData : []);
-      }
-    } catch (error) {
-      setMessage(error.message);
-      setMessageType("error");
-    }
-  };
-
   const generatePresencaReport = async () => {
     if (!alunoData || !selectedYear) return;
 
@@ -462,9 +328,9 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     try {
       const resp = await fetch(
         getApiUrl(
-          `/alunos/${alunoData.aluno_id}/presencas?ano=${selectedYear}`
+          `/alunos/${alunoData.aluno_id}/presencas?ano=${selectedYear}`,
         ),
-        { credentials: "include" }
+        { credentials: "include" },
       );
       const data = await resp.json();
 
@@ -517,13 +383,13 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
       // Resumo estatístico
       const totalDias = presencas.length;
       const presentes = presencas.filter(
-        (p) => p.status_presenca === "P"
+        (p) => p.status_presenca === "P",
       ).length;
       const ausentes = presencas.filter(
-        (p) => p.status_presenca === "F"
+        (p) => p.status_presenca === "F",
       ).length;
       const justificados = presencas.filter(
-        (p) => p.status_presenca === "FJ"
+        (p) => p.status_presenca === "FJ",
       ).length;
 
       doc.setFontSize(12);
@@ -568,7 +434,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
         doc.text(
           "Nenhum registro de presença encontrado para este ano.",
           20,
-          yPosition
+          yPosition,
         );
       }
 
@@ -577,7 +443,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
       // Salvar PDF
       doc.save(
-        `presenca_${alunoData.nome_aluno || "aluno"}_${selectedYear}.pdf`
+        `presenca_${alunoData.nome_aluno || "aluno"}_${selectedYear}.pdf`,
       );
 
       setMessage("Relatório gerado com sucesso!");
@@ -672,107 +538,53 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                 Faça upload de documentos do aluno (máximo 10MB por arquivo).
               </p>
 
-              {/* Upload de arquivo */}
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label
-                  htmlFor="file-upload"
-                  style={{
-                    display: "inline-block",
-                    padding: "10px 20px",
-                    backgroundColor: uploadingFile ? "#ccc" : "#28a745",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: uploadingFile ? "not-allowed" : "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                  }}
-                >
-                  {uploadingFile ? "📤 Enviando..." : "📤 Adicionar Arquivo"}
-                </label>
-                <input
-                  type="file"
-                  id="file-upload"
-                  style={{ display: "none" }}
-                  onChange={handleFileUpload}
-                  disabled={uploadingFile}
-                />
-              </div>
+              <AnexoAlunoUpload
+                alunoId={alunoData.aluno_id}
+                onUploadSuccess={() => {
+                  // Recarregar anexos após upload
+                  const fetchAnexos = async () => {
+                    try {
+                      const res = await fetch(
+                        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
+                        { credentials: "include" },
+                      );
+                      if (res.ok) {
+                        const data = await res.json();
+                        setAnexos(Array.isArray(data) ? data : []);
+                      }
+                    } catch (e) {
+                      console.error("Erro ao recarregar anexos:", e);
+                    }
+                  };
+                  fetchAnexos();
+                }}
+              />
 
               {/* Lista de anexos */}
               {anexos.length > 0 ? (
-                <div>
-                  <h4 style={{ marginTop: 0, marginBottom: "1rem" }}>
-                    Arquivos:
-                  </h4>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                    {anexos.map((anexo) => (
-                      <li
-                        key={anexo.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "12px",
-                          backgroundColor: "white",
-                          border: "1px solid #dee2e6",
-                          borderRadius: "6px",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div
-                            style={{ fontWeight: "500", marginBottom: "4px" }}
-                          >
-                            📄 {anexo.nome_original}
-                          </div>
-                          <div style={{ fontSize: "12px", color: "#666" }}>
-                            Enviado em:{" "}
-                            {new Date(anexo.data_upload).toLocaleDateString(
-                              "pt-BR"
-                            )}
-                            {anexo.tamanho &&
-                              ` • ${(anexo.tamanho / 1024).toFixed(1)} KB`}
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <a
-                            href={`${API_URL}${anexo.caminho_arquivo}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              padding: "6px 12px",
-                              backgroundColor: "#007bff",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "4px",
-                              textDecoration: "none",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            👁️ Abrir
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteAnexo(anexo.id)}
-                            style={{
-                              padding: "6px 12px",
-                              backgroundColor: "#dc3545",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "4px",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            🗑️ Excluir
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <ListaAnexos
+                  anexos={anexos}
+                  tipo="aluno"
+                  idRef={alunoData.aluno_id}
+                  onDelete={(id) => {
+                    // Após delete, recarregar
+                    const fetchAnexos = async () => {
+                      try {
+                        const res = await fetch(
+                          getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
+                          { credentials: "include" },
+                        );
+                        if (res.ok) {
+                          const data = await res.json();
+                          setAnexos(Array.isArray(data) ? data : []);
+                        }
+                      } catch (e) {
+                        console.error("Erro ao recarregar anexos:", e);
+                      }
+                    };
+                    fetchAnexos();
+                  }}
+                />
               ) : (
                 <p style={{ color: "#999", fontStyle: "italic" }}>
                   Nenhum documento anexado ainda.
@@ -785,11 +597,8 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
           <div className="photo-upload-section full-width">
             <div className="photo-preview-container">
               <div className="photo-preview">
-                {formData.foto_perfil ? (
-                  <img
-                    src={`${API_URL}${formData.foto_perfil}`}
-                    alt="Foto do aluno"
-                  />
+                {fotoUrl ? (
+                  <img src={fotoUrl} alt="Foto do aluno" />
                 ) : (
                   <div className="photo-placeholder">
                     {formData.nome_aluno
@@ -806,44 +615,27 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                 Adicione ou altere a foto do aluno. Tamanho máximo: 5MB.
                 Formatos aceitos: JPG, PNG, GIF.
               </p>
-              <div className="photo-buttons">
-                <label
-                  htmlFor="aluno-photo-upload"
-                  className={`photo-upload-btn ${uploading ? "disabled" : ""}`}
-                >
-                  {uploading ? (
-                    <>
-                      <span className="loading-spinner"></span> Enviando...
-                    </>
-                  ) : (
-                    <>📷 Alterar Foto</>
-                  )}
-                </label>
-                {formData.foto_perfil && (
-                  <button
-                    type="button"
-                    className="photo-remove-btn"
-                    onClick={handleRemovePhoto}
-                    disabled={uploading}
-                  >
-                    🗑️ Remover Foto
-                  </button>
-                )}
-                <input
-                  type="file"
-                  id="aluno-photo-upload"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  disabled={uploading}
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      handlePhotoUpload(file);
-                    }
-                    e.target.value = "";
-                  }}
-                />
-              </div>
+              <ImagemAlunoUpload
+                alunoId={alunoData.aluno_id}
+                hasPhoto={formData.foto_perfil}
+                onUploadSuccess={(caminhoFirebase) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    foto_perfil: caminhoFirebase,
+                  }));
+                  setMessage(
+                    "Foto carregada com sucesso! Clique em 'Salvar' para confirmar.",
+                  );
+                  setMessageType("success");
+                }}
+                onRemove={() => {
+                  setFormData((prev) => ({ ...prev, foto_perfil: null }));
+                  setMessage(
+                    "Foto removida com sucesso! Clique em 'Salvar' para confirmar.",
+                  );
+                  setMessageType("success");
+                }}
+              />
             </div>
           </div>
 
@@ -891,7 +683,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                 >
                   {Array.from(
                     { length: 10 },
-                    (_, i) => new Date().getFullYear() - i
+                    (_, i) => new Date().getFullYear() - i,
                   ).map((year) => (
                     <option key={year} value={year}>
                       {year}
@@ -1003,7 +795,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                     formData.nome_turma
                       ? `${formData.nome_turma} (${
                           formData.periodo?.replace(/^\w/, (c) =>
-                            c.toUpperCase()
+                            c.toUpperCase(),
                           ) || ""
                         }) - ${formData.ano_letivo || ""}`
                       : "Nenhuma turma associada"
@@ -1146,7 +938,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                         data.outro_telefone || prev.outro_telefone || "",
                     }));
                     setMessage(
-                      "Responsável encontrado. Dados preenchidos automaticamente."
+                      "Responsável encontrado. Dados preenchidos automaticamente.",
                     );
                     setMessageType("success");
                   }}
@@ -1158,7 +950,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                       data: null,
                     });
                     setMessage(
-                      "CPF não cadastrado. Preencha os dados para criar um novo responsável."
+                      "CPF não cadastrado. Preencha os dados para criar um novo responsável.",
                     );
                     setMessageType("warning");
                   }}
@@ -1281,19 +1073,19 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
           <button
             type="submit"
             onClick={handleSubmit}
-            disabled={uploading}
+            disabled={saving}
             style={{
               padding: "10px 20px",
-              backgroundColor: uploading ? "#ccc" : "#007bff",
+              backgroundColor: saving ? "#ccc" : "#007bff",
               color: "white",
               border: "none",
               borderRadius: "6px",
-              cursor: uploading ? "not-allowed" : "pointer",
+              cursor: saving ? "not-allowed" : "pointer",
               fontSize: "14px",
               fontWeight: "500",
             }}
           >
-            {uploading ? (
+            {saving ? (
               <>
                 <span className="loading-spinner"></span> Salvando...
               </>

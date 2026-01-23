@@ -82,6 +82,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Rotas do Firebase Storage
+const uploadRoutes = require("./src/routes/upload.routes");
+app.use("/api/upload", uploadRoutes);
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 async function sendResetEmail(to, resetLink) {
@@ -870,16 +874,15 @@ app.get(
       // Busca os alunos vinculados a este responsável
       console.log("\n👨‍👩‍👧‍👦 [Backend] Buscando alunos vinculados...");
       const alunosQuery = `
-      SELECT 
+      SELECT
         a.id,
         a.nome_completo as nome_aluno,
         t.nome_turma as turma,
         t.periodo
       FROM alunos a
-      LEFT JOIN aluno_familias af ON af.aluno_id = a.id
       LEFT JOIN turma_alunos ta ON a.id = ta.aluno_id
       LEFT JOIN turmas t ON ta.turma_id = t.id
-      WHERE af.familia_id = $1 AND a.status_aluno = true
+      WHERE a.familia_id = $1 AND a.status_aluno = true
       ORDER BY a.nome_completo ASC
     `;
       console.log(
@@ -1539,16 +1542,9 @@ app.post(
           .status(404)
           .json({ error: "Responsável (família) não encontrado." });
       }
-      // Insere no vínculo N:N (idempotente)
-      await pool.query(
-        `INSERT INTO aluno_familias (aluno_id, familia_id)
-       VALUES ($1, $2)
-       ON CONFLICT (aluno_id, familia_id) DO NOTHING`,
-        [id, familia_id],
-      );
-      // Back-compat: se o aluno não possui familia_id, preenche com este
+      // Atualiza o familia_id do aluno
       const updated = await pool.query(
-        `UPDATE alunos SET familia_id = COALESCE(familia_id, $1) WHERE id = $2 RETURNING *`,
+        `UPDATE alunos SET familia_id = $1 WHERE id = $2 RETURNING *`,
         [familia_id, id],
       );
       return res.status(200).json({
@@ -1571,10 +1567,16 @@ app.delete(
   async (req, res) => {
     const { id, familiaId } = req.params;
     try {
-      const del = await pool.query(
-        `DELETE FROM aluno_familias WHERE aluno_id = $1 AND familia_id = $2`,
+      // Define familia_id como null para o aluno
+      const updated = await pool.query(
+        `UPDATE alunos SET familia_id = NULL WHERE id = $1 AND familia_id = $2 RETURNING *`,
         [id, familiaId],
       );
+
+      if (updated.rowCount === 0) {
+        return res.status(404).json({ error: "Vínculo não encontrado." });
+      }
+
       return res
         .status(200)
         .json({ message: "Responsável desvinculado com sucesso." });
@@ -1593,9 +1595,9 @@ app.get("/alunos/:id/responsaveis", authenticateToken, async (req, res) => {
   try {
     const rs = await pool.query(
       `SELECT f.*
-       FROM aluno_familias af
-       JOIN familias f ON f.id = af.familia_id
-       WHERE af.aluno_id = $1
+       FROM alunos a
+       JOIN familias f ON f.id = a.familia_id
+       WHERE a.id = $1
        ORDER BY f.nome_completo ASC`,
       [id],
     );
@@ -1853,6 +1855,33 @@ app.get("/alunos/:id/anexos", authenticateToken, async (req, res) => {
   }
 });
 
+// POST - Adicionar novo anexo (para Firebase)
+app.post("/alunos/anexos", authenticateToken, async (req, res) => {
+  const { aluno_id, nome_arquivo, tipo_arquivo, caminho_firebase, tamanho } =
+    req.body;
+
+  if (!aluno_id || !nome_arquivo || !caminho_firebase) {
+    return res.status(400).json({
+      error: "aluno_id, nome_arquivo e caminho_firebase são obrigatórios",
+    });
+  }
+
+  try {
+    const result = await db.query(
+      `INSERT INTO aluno_anexos 
+       (aluno_id, nome_original, caminho_arquivo, tamanho)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [aluno_id, nome_arquivo, caminho_firebase, tamanho],
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Erro ao adicionar anexo do aluno:", err.message);
+    res.status(500).json({ error: "Erro ao adicionar anexo." });
+  }
+});
+
 // Rota para FAZER UPLOAD de anexo
 app.post(
   "/alunos/:id/anexos",
@@ -1965,6 +1994,7 @@ app.put("/alunos/:id", async (req, res) => {
     telefone,
     outro_telefone,
     turma_id, // NOVO: id da turma para alterar
+    foto_perfil, // NOVO: caminho da foto no Firebase
   } = req.body;
 
   // Validação básica
@@ -1988,14 +2018,15 @@ app.put("/alunos/:id", async (req, res) => {
     // Atualiza a tabela 'alunos'
     const alunoUpdateQuery = `
       UPDATE alunos 
-      SET nome_completo = $1, data_nascimento = $2, informacoes_saude = $3, status_pagamento = $4
-      WHERE id = $5
+      SET nome_completo = $1, data_nascimento = $2, informacoes_saude = $3, status_pagamento = $4, foto_perfil = $5
+      WHERE id = $6
     `;
     await db.query(alunoUpdateQuery, [
       nome_aluno,
       data_nascimento,
       informacoes_saude,
       status_pagamento,
+      foto_perfil,
       id,
     ]);
 
@@ -2021,12 +2052,18 @@ app.put("/alunos/:id", async (req, res) => {
           `[UPDATE ALUNO] Removendo aluno ${id} de todas as turmas (Sem Turma)`,
         );
         await db.query("DELETE FROM turma_alunos WHERE aluno_id = $1", [id]);
+        
+        // Define o aluno como inativo quando removido de todas as turmas
+        await db.query("UPDATE alunos SET status_aluno = FALSE WHERE id = $1", [id]);
       } else if (turma_id !== "") {
         // Se turma_id for fornecido, atualiza ou insere
         const turmaIdNum = Number(turma_id);
         console.log(
           `[UPDATE ALUNO] Processando turma_id: ${turmaIdNum} para aluno ${id}`,
         );
+
+        // Ativa o aluno quando uma turma é atribuída
+        await db.query("UPDATE alunos SET status_aluno = TRUE WHERE id = $1", [id]);
 
         // Verifica se já existe a relação ESPECÍFICA (aluno + turma)
         const rel = await db.query(
@@ -2291,7 +2328,39 @@ app.delete("/turmas/ano/:anoLetivo", authenticateToken, async (req, res) => {
     );
     const planIds = planRows.rows.map((r) => r.id_planejamento);
 
-    // 2) Remove dependências dos planejamentos
+    // 2) Buscar anexos Firebase dos planejamentos para excluir
+    let caminhosFirebase = [];
+    if (planIds.length > 0) {
+      const planPlaceholders = planIds.map((_, i) => `$${i + 1}`).join(",");
+      const anexosFirebaseResult = await client.query(
+        `SELECT caminho_firebase FROM planejamento_anexos_firebase WHERE planejamento_id IN (${planPlaceholders})`,
+        planIds,
+      );
+      caminhosFirebase = anexosFirebaseResult.rows.map(row => row.caminho_firebase);
+    }
+
+    // 3) Excluir arquivos do Firebase
+    console.log("🗑️ [DELETE TURMAS ANO] Arquivos Firebase para excluir:", caminhosFirebase);
+
+    const { bucket } = require("./src/config/firebase");
+    for (const caminho of caminhosFirebase) {
+      if (caminho && caminho.startsWith('anexos_planejamento/')) {
+        try {
+          const file = bucket.file(caminho);
+          const [exists] = await file.exists();
+          if (exists) {
+            await file.delete();
+            console.log(`✅ [DELETE TURMAS ANO] Arquivo Firebase excluído: ${caminho}`);
+          } else {
+            console.log(`⚠️ [DELETE TURMAS ANO] Arquivo Firebase não encontrado: ${caminho}`);
+          }
+        } catch (error) {
+          console.warn(`[DELETE TURMAS ANO] Erro ao excluir arquivo Firebase ${caminho}:`, error.message);
+        }
+      }
+    }
+
+    // 4) Remove dependências dos planejamentos
     if (planIds.length > 0) {
       const planPlaceholders = planIds.map((_, i) => `$${i + 1}`).join(",");
       await client.query(
@@ -2303,18 +2372,22 @@ app.delete("/turmas/ano/:anoLetivo", authenticateToken, async (req, res) => {
         planIds,
       );
       await client.query(
+        `DELETE FROM planejamento_anexos_firebase WHERE planejamento_id IN (${planPlaceholders})`,
+        planIds,
+      );
+      await client.query(
         `DELETE FROM planejamentos WHERE id_planejamento IN (${planPlaceholders})`,
         planIds,
       );
     }
 
-    // 3) Remove presenças
+    // 5) Remove presenças
     await client.query(
       `DELETE FROM presencas WHERE turma_id IN (${placeholders})`,
       turmaIds,
     );
 
-    // 4) Remove vínculos com professores e alunos
+    // 6) Remove vínculos com professores e alunos
     await client.query(
       `DELETE FROM turma_professores WHERE turma_id IN (${placeholders})`,
       turmaIds,
@@ -2350,7 +2423,7 @@ app.delete("/turmas/ano/:anoLetivo", authenticateToken, async (req, res) => {
       }
     }
 
-    // 5) Remove relatórios associados
+    // 7) Remove relatórios associados
     try {
       const rels = await client.query(
         `SELECT caminho_arquivo FROM relatorios WHERE tipo_destino = 'turma' AND destino_id IN (${placeholders})`,
@@ -2382,7 +2455,7 @@ app.delete("/turmas/ano/:anoLetivo", authenticateToken, async (req, res) => {
       console.warn("[EXCLUIR TURMAS] Falha ao limpar relatórios:", e.message);
     }
 
-    // 6) Remove todas as turmas do ano
+    // 8) Remove todas as turmas do ano
     await client.query(`DELETE FROM turmas WHERE ano_letivo = $1`, [anoLetivo]);
 
     await client.query("COMMIT");
@@ -2433,7 +2506,38 @@ app.delete(
       );
       const planIds = planRows.rows.map((r) => r.id_planejamento);
 
-      // 2) Remove dependências dos planejamentos (comentários, anexos, notificações via FK CASCADE)
+      // 2) Buscar anexos Firebase dos planejamentos para excluir
+      let caminhosFirebase = [];
+      if (planIds.length > 0) {
+        const anexosFirebaseResult = await client.query(
+          "SELECT caminho_firebase FROM planejamento_anexos_firebase WHERE planejamento_id = ANY($1::int[])",
+          [planIds],
+        );
+        caminhosFirebase = anexosFirebaseResult.rows.map(row => row.caminho_firebase);
+      }
+
+      // 3) Excluir arquivos do Firebase
+      console.log("🗑️ [DELETE TURMA] Arquivos Firebase para excluir:", caminhosFirebase);
+
+      const { bucket } = require("./src/config/firebase");
+      for (const caminho of caminhosFirebase) {
+        if (caminho && caminho.startsWith('anexos_planejamento/')) {
+          try {
+            const file = bucket.file(caminho);
+            const [exists] = await file.exists();
+            if (exists) {
+              await file.delete();
+              console.log(`✅ [DELETE TURMA] Arquivo Firebase excluído: ${caminho}`);
+            } else {
+              console.log(`⚠️ [DELETE TURMA] Arquivo Firebase não encontrado: ${caminho}`);
+            }
+          } catch (error) {
+            console.warn(`[DELETE TURMA] Erro ao excluir arquivo Firebase ${caminho}:`, error.message);
+          }
+        }
+      }
+
+      // 4) Remove dependências dos planejamentos (comentários, anexos, notificações via FK CASCADE)
       if (planIds.length > 0) {
         await client.query(
           "DELETE FROM planejamento_comentarios WHERE planejamento_id = ANY($1::int[])",
@@ -2444,17 +2548,21 @@ app.delete(
           [planIds],
         );
         await client.query(
+          "DELETE FROM planejamento_anexos_firebase WHERE planejamento_id = ANY($1::int[])",
+          [planIds],
+        );
+        await client.query(
           "DELETE FROM planejamentos WHERE id_planejamento = ANY($1::int[])",
           [planIds],
         );
       }
 
-      // 3) Presenças da turma
+      // 5) Presenças da turma
       await client.query("DELETE FROM presencas WHERE turma_id = $1", [
         turmaId,
       ]);
 
-      // 4) Vínculos com professores e alunos
+      // 6) Vínculos com professores e alunos
       await client.query("DELETE FROM turma_professores WHERE turma_id = $1", [
         turmaId,
       ]);
@@ -2488,7 +2596,7 @@ app.delete(
         }
       }
 
-      // 5) Relatórios associados à turma (opcional, se houver)
+      // 7) Relatórios associados à turma (opcional, se houver)
       try {
         const rels = await client.query(
           "SELECT id, caminho_arquivo FROM relatorios WHERE tipo_destino = 'turma' AND destino_id = $1",
@@ -2521,7 +2629,7 @@ app.delete(
         );
       }
 
-      // 6) Finalmente, remove a turma
+      // 8) Finalmente, remove a turma
       await client.query("DELETE FROM turmas WHERE id = $1", [turmaId]);
 
       await client.query("COMMIT");
@@ -2783,7 +2891,7 @@ app.post("/alunos/:alunoId/matricular", async (req, res) => {
 
     // 1. Ativa o aluno
     const updateAlunoQuery = await client.query(
-      "UPDATE alunos SET status_aluno = TRUE WHERE id = $1 RETURNING *",
+      "UPDATE alunos SET status_aluno = TRUE WHERE id = $1 RETURNING status_aluno",
       [alunoId],
     );
 
@@ -2792,7 +2900,7 @@ app.post("/alunos/:alunoId/matricular", async (req, res) => {
     }
 
     // 2. Matricula o aluno na turma (com proteção contra duplicatas)
-    await client.query(
+    const insertResult = await client.query(
       "INSERT INTO turma_alunos (aluno_id, turma_id) VALUES ($1, $2) ON CONFLICT (turma_id, aluno_id) DO NOTHING",
       [alunoId, turmaId],
     );
@@ -2828,18 +2936,52 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // 1) Busca familia_id e existência do aluno
+    // 1) Busca familia_id, foto_perfil e existência do aluno
     const alunoResult = await client.query(
-      "SELECT id, familia_id FROM alunos WHERE id = $1",
+      "SELECT id, familia_id, foto_perfil FROM alunos WHERE id = $1",
       [alunoId],
     );
     if (alunoResult.rowCount === 0) {
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Aluno não encontrado." });
     }
-    const { familia_id } = alunoResult.rows[0];
+    const { familia_id, foto_perfil } = alunoResult.rows[0];
 
-    // 2) Remove dependências que referenciam o aluno (ordem importante)
+    // 2) Buscar caminhos dos anexos para excluir do Firebase
+    console.log("🗑️ [DELETE ALUNO] Buscando anexos para excluir...");
+    const anexosResult = await client.query(
+      "SELECT caminho_arquivo FROM aluno_anexos WHERE aluno_id = $1",
+      [alunoId],
+    );
+    const caminhosAnexos = anexosResult.rows.map(row => row.caminho_arquivo);
+
+    // 3) Excluir arquivos do Firebase (foto e anexos)
+    const arquivosParaExcluir = [];
+    if (foto_perfil && foto_perfil.startsWith('imagem_aluno/')) {
+      arquivosParaExcluir.push(foto_perfil);
+    }
+    arquivosParaExcluir.push(...caminhosAnexos.filter(c => c && c.startsWith('anexos_aluno/')));
+
+    console.log("🗑️ [DELETE ALUNO] Arquivos para excluir do Firebase:", arquivosParaExcluir);
+
+    // Excluir arquivos do Firebase usando o bucket diretamente
+    const { bucket } = require("./src/config/firebase");
+    for (const caminho of arquivosParaExcluir) {
+      try {
+        const file = bucket.file(caminho);
+        const [exists] = await file.exists();
+        if (exists) {
+          await file.delete();
+          console.log(`✅ [DELETE ALUNO] Arquivo excluído: ${caminho}`);
+        } else {
+          console.log(`⚠️ [DELETE ALUNO] Arquivo não encontrado: ${caminho}`);
+        }
+      } catch (error) {
+        console.warn(`[DELETE ALUNO] Erro ao excluir arquivo ${caminho}:`, error.message);
+      }
+    }
+
+    // 4) Remove dependências que referenciam o aluno (ordem importante)
     console.log("🗑️ [DELETE ALUNO] Removendo presencas...");
     const presAntes = await client.query(
       "SELECT COUNT(*)::int as c FROM presencas WHERE aluno_id = $1",
@@ -2885,11 +3027,11 @@ app.delete("/alunos/:id", authenticateToken, async (req, res) => {
       aluno_anexos: delAnexos.rowCount,
     });
 
-    // 3) Remove o aluno
+    // 5) Remove o aluno
     console.log("🗑️ [DELETE ALUNO] Removendo aluno...");
     await client.query("DELETE FROM alunos WHERE id = $1", [alunoId]);
 
-    // 4) Se não houver mais alunos com essa família, remove a família
+    // 6) Se não houver mais alunos com essa família, remove a família
     if (familia_id) {
       console.log(
         "🗑️ [DELETE ALUNO] Verificando outros alunos da família",
@@ -3853,7 +3995,117 @@ app.delete("/comentarios/:id", authenticateToken, async (req, res) => {
 });
 
 // ========================================
-// 📅 ROTAS PARA PLANEJAMENTO COM SEMANAS ISO
+// � ROTAS PARA ANEXOS DE PLANEJAMENTO (Firebase)
+// ========================================
+
+// GET - Listar anexos de um planejamento
+app.get("/planejamentos/:id/anexos", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await db.query(
+      `SELECT id, planejamento_id, nome_arquivo, tipo_arquivo, 
+              caminho_firebase, tamanho, criado_em
+       FROM planejamento_anexos_firebase
+       WHERE planejamento_id = $1
+       ORDER BY criado_em DESC`,
+      [id],
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("Erro ao listar anexos:", err.message);
+    res.status(500).json({ error: "Erro ao listar anexos." });
+  }
+});
+
+// POST - Adicionar novo anexo
+app.post("/planejamentos/anexos", authenticateToken, async (req, res) => {
+  const {
+    planejamento_id,
+    nome_arquivo,
+    tipo_arquivo,
+    caminho_firebase,
+    tamanho,
+  } = req.body;
+
+  if (!planejamento_id || !nome_arquivo || !caminho_firebase) {
+    return res.status(400).json({
+      error:
+        "planejamento_id, nome_arquivo e caminho_firebase são obrigatórios",
+    });
+  }
+
+  try {
+    const result = await db.query(
+      `INSERT INTO planejamento_anexos_firebase 
+       (planejamento_id, nome_arquivo, tipo_arquivo, caminho_firebase, tamanho)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [planejamento_id, nome_arquivo, tipo_arquivo, caminho_firebase, tamanho],
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Erro ao adicionar anexo:", err.message);
+    res.status(500).json({ error: "Erro ao adicionar anexo." });
+  }
+});
+
+// DELETE - Remover anexo
+app.delete("/planejamentos/anexos/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Primeiro, buscar o caminho do arquivo para excluir do Firebase
+    const selectResult = await db.query(
+      `SELECT caminho_firebase FROM planejamento_anexos_firebase WHERE id = $1`,
+      [id],
+    );
+
+    if (selectResult.rows.length === 0) {
+      return res.status(404).json({ error: "Anexo não encontrado" });
+    }
+
+    const caminhoFirebase = selectResult.rows[0].caminho_firebase;
+
+    // Excluir arquivo do Firebase se existir
+    if (caminhoFirebase && caminhoFirebase.startsWith('anexos_planejamento/')) {
+      try {
+        const { bucket } = require("./src/config/firebase");
+        const file = bucket.file(caminhoFirebase);
+        const [exists] = await file.exists();
+        if (exists) {
+          await file.delete();
+          console.log(`✅ [DELETE ANEXO PLANEJAMENTO] Arquivo Firebase excluído: ${caminhoFirebase}`);
+        } else {
+          console.log(`⚠️ [DELETE ANEXO PLANEJAMENTO] Arquivo Firebase não encontrado: ${caminhoFirebase}`);
+        }
+      } catch (error) {
+        console.warn(`[DELETE ANEXO PLANEJAMENTO] Erro ao excluir arquivo Firebase ${caminhoFirebase}:`, error.message);
+      }
+    }
+
+    // Deletar do banco
+    const result = await db.query(
+      `DELETE FROM planejamento_anexos_firebase
+       WHERE id = $1
+       RETURNING *`,
+      [id],
+    );
+
+    res.status(200).json({
+      message: "Anexo excluído com sucesso",
+      anexo: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Erro ao excluir anexo:", err.message);
+    res.status(500).json({ error: "Erro ao excluir anexo." });
+  }
+});
+
+// ========================================
+// �📅 ROTAS PARA PLANEJAMENTO COM SEMANAS ISO
 // ========================================
 
 const {
@@ -4596,33 +4848,67 @@ app.delete(
     try {
       await client.query("BEGIN");
 
-      // Buscar anexos para remover arquivos físicos
-      const anexosResult = await client.query(
+      // 1) Buscar anexos locais e Firebase para excluir arquivos
+      const anexosLocaisResult = await client.query(
         "SELECT id_anexo, path_arquivo FROM planejamento_anexos WHERE planejamento_id = $1",
         [id],
       );
 
-      // Deleta comentários do planejamento
+      const anexosFirebaseResult = await client.query(
+        "SELECT id, caminho_firebase FROM planejamento_anexos_firebase WHERE planejamento_id = $1",
+        [id],
+      );
+
+      const caminhosFirebase = anexosFirebaseResult.rows.map(row => row.caminho_firebase);
+
+      // 2) Excluir arquivos do Firebase
+      console.log("🗑️ [DELETE PLANEJAMENTO] Arquivos Firebase para excluir:", caminhosFirebase);
+
+      const { bucket } = require("./src/config/firebase");
+      for (const caminho of caminhosFirebase) {
+        if (caminho && caminho.startsWith('anexos_planejamento/')) {
+          try {
+            const file = bucket.file(caminho);
+            const [exists] = await file.exists();
+            if (exists) {
+              await file.delete();
+              console.log(`✅ [DELETE PLANEJAMENTO] Arquivo Firebase excluído: ${caminho}`);
+            } else {
+              console.log(`⚠️ [DELETE PLANEJAMENTO] Arquivo Firebase não encontrado: ${caminho}`);
+            }
+          } catch (error) {
+            console.warn(`[DELETE PLANEJAMENTO] Erro ao excluir arquivo Firebase ${caminho}:`, error.message);
+          }
+        }
+      }
+
+      // 3) Deleta comentários do planejamento
       await client.query(
         "DELETE FROM planejamento_comentarios WHERE planejamento_id = $1",
         [id],
       );
 
-      // Deleta anexos do planejamento
+      // 4) Deleta anexos locais do planejamento
       await client.query(
         "DELETE FROM planejamento_anexos WHERE planejamento_id = $1",
         [id],
       );
 
-      // Remove arquivos físicos dos anexos
-      for (const row of anexosResult.rows) {
+      // 5) Deleta anexos Firebase do planejamento
+      await client.query(
+        "DELETE FROM planejamento_anexos_firebase WHERE planejamento_id = $1",
+        [id],
+      );
+
+      // 6) Remove arquivos físicos dos anexos locais
+      for (const row of anexosLocaisResult.rows) {
         const filePath = row.path_arquivo;
         if (filePath) {
           try {
             fs.unlinkSync(filePath);
           } catch (err) {
             console.error(
-              "Erro ao remover arquivo de anexo:",
+              "Erro ao remover arquivo local de anexo:",
               filePath,
               err.message,
             );
@@ -4630,7 +4916,7 @@ app.delete(
         }
       }
 
-      // Deleta o planejamento em si
+      // 7) Deleta o planejamento em si
       const delPlan = await client.query(
         "DELETE FROM planejamentos WHERE id_planejamento = $1 RETURNING turma_id, ano, mes",
         [id],
@@ -4937,6 +5223,47 @@ app.delete("/remove-profile-photo", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error("Erro ao remover foto de perfil:", err.message);
     res.status(500).json({ error: "Erro interno ao remover a foto." });
+  }
+});
+
+// Rota para atualizar foto de perfil do usuário (usando Firebase)
+app.put("/usuario/atualizar-foto", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { foto_perfil } = req.body;
+
+    // Validação básica
+    if (foto_perfil !== null && typeof foto_perfil !== "string") {
+      return res.status(400).json({ error: "foto_perfil deve ser uma string ou null." });
+    }
+
+    // Atualiza a foto do usuário no banco de dados
+    const updateQuery = `
+      UPDATE usuarios 
+      SET foto_perfil = $1 
+      WHERE id = $2 
+      RETURNING id, nome, email, cargo, foto_perfil
+    `;
+
+    const result = await db.query(updateQuery, [foto_perfil, userId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    console.log("[atualizar-foto] Foto atualizada no banco:", {
+      userId: userId,
+      foto_perfil: foto_perfil,
+      updatedUser: result.rows[0],
+    });
+
+    res.json({
+      message: "Foto de perfil atualizada com sucesso!",
+      user: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Erro ao atualizar foto de perfil:", err.message);
+    res.status(500).json({ error: "Erro interno ao atualizar a foto." });
   }
 });
 

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl, API_URL, fetchWithAuth } from "../config/api"; // Importar o hook
+import { getImageUrl, uploadFotoPerfilUsuario, excluirFotoPerfilUsuario } from "../utils/firebaseUpload";
 import "../css/PerfilPage.css"; // Vamos criar este CSS a seguir
 
 const PerfilPage = () => {
@@ -9,6 +10,7 @@ const PerfilPage = () => {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [userImageUrl, setUserImageUrl] = useState(null);
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
@@ -32,31 +34,42 @@ const PerfilPage = () => {
     setMessage("");
     setMessageType("");
 
-    const formData = new FormData();
-    formData.append("profilePhoto", file);
-
     try {
-      const response = await fetchWithAuth("/upload-profile-photo", {
-        method: "POST",
-        body: formData,
+      console.log("📤 [PerfilPage] Iniciando upload:", {
+        userId: user.id,
+        userIdType: typeof user.id,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+
+      // Upload para Firebase
+      const caminhoFirebase = await uploadFotoPerfilUsuario(file, String(user.id));
+
+      // Atualizar no backend (salvar caminho no banco)
+      const response = await fetchWithAuth("/usuario/atualizar-foto", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ foto_perfil: caminhoFirebase }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(data.message);
+        setMessage("Foto de perfil atualizada com sucesso!");
         setMessageType("success");
         // Atualiza o contexto do usuário com a nova foto
-        const updatedUser = { ...user, foto_perfil: data.imageUrl };
+        const updatedUser = { ...user, foto_perfil: caminhoFirebase };
         updateUser(updatedUser);
-        console.log("Foto atualizada:", data.imageUrl);
+        console.log("Foto atualizada:", caminhoFirebase);
         console.log("Usuário atualizado:", updatedUser);
       } else {
-        setMessage(data.error || "Erro ao fazer upload da foto.");
+        setMessage(data.error || "Erro ao atualizar foto no banco.");
         setMessageType("error");
       }
     } catch (error) {
+      console.error("Erro no upload:", error);
       setMessage("Erro de conexão. Tente novamente.");
       setMessageType("error");
     } finally {
@@ -78,15 +91,23 @@ const PerfilPage = () => {
     setMessageType("");
 
     try {
-      const response = await fetchWithAuth("/remove-profile-photo", {
-        method: "DELETE",
+      // Se o caminho for do Firebase, deletar do Firebase
+      if (user.foto_perfil.startsWith("imagem_perfil/")) {
+        await excluirFotoPerfilUsuario(user.foto_perfil);
+      }
+
+      // Atualizar no backend (remover caminho do banco)
+      const response = await fetchWithAuth("/usuario/atualizar-foto", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ foto_perfil: null }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(data.message);
+        setMessage("Foto de perfil removida com sucesso!");
         setMessageType("success");
         // Atualiza o contexto do usuário removendo a foto
         updateUser({ ...user, foto_perfil: null });
@@ -95,12 +116,31 @@ const PerfilPage = () => {
         setMessageType("error");
       }
     } catch (error) {
+      console.error("Erro na remoção:", error);
       setMessage("Erro de conexão. Tente novamente.");
       setMessageType("error");
     } finally {
       setUploading(false);
     }
   };
+
+  useEffect(() => {
+    const loadUserImageUrl = async () => {
+      if (user?.foto_perfil) {
+        try {
+          const url = await getImageUrl(user.foto_perfil);
+          setUserImageUrl(url);
+        } catch (error) {
+          console.error("Erro ao carregar imagem do usuário:", error);
+          setUserImageUrl(null);
+        }
+      } else {
+        setUserImageUrl(null);
+      }
+    };
+
+    loadUserImageUrl();
+  }, [user]);
 
   // Se o usuário ainda não foi carregado (pode acontecer em um refresh),
   // mostramos uma mensagem de carregamento.
@@ -121,7 +161,7 @@ const PerfilPage = () => {
         <div className="profile-photo-container">
           {user.foto_perfil ? (
             <img
-              src={`${API_URL}${user.foto_perfil}`}
+              src={userImageUrl || `${API_URL}${user.foto_perfil}`}
               alt="Foto do Perfil"
               className="profile-photo"
             />

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../config/api";
 import { Link } from "react-router-dom";
+import { getImageUrl } from "../utils/firebaseUpload";
 import {
   FaUserGraduate,
   FaUsers,
@@ -18,6 +19,25 @@ import "../css/DashboardHomePage.css";
 
 const HomePage = () => {
   const { user } = useAuth();
+  const [userImageUrl, setUserImageUrl] = useState(null);
+
+  useEffect(() => {
+    const loadUserImageUrl = async () => {
+      if (user?.foto_perfil) {
+        try {
+          const url = await getImageUrl(user.foto_perfil);
+          setUserImageUrl(url);
+        } catch (error) {
+          console.error("Erro ao carregar imagem do usuário:", error);
+          setUserImageUrl(null);
+        }
+      } else {
+        setUserImageUrl(null);
+      }
+    };
+
+    loadUserImageUrl();
+  }, [user]);
 
   // Lista de funcionalidades disponíveis
   const allFeatures = [
@@ -96,7 +116,7 @@ const HomePage = () => {
     // Se for professor, filtra as rotas restritas
     if (user.cargo && user.cargo.toLowerCase() === "professor") {
       return allFeatures.filter(
-        (feature) => !restrictedForProfessor.includes(feature.path)
+        (feature) => !restrictedForProfessor.includes(feature.path),
       );
     }
 
@@ -121,7 +141,7 @@ const HomePage = () => {
         <div className="profile-card-header">
           {user.foto_perfil ? (
             <img
-              src={`${API_URL}${user.foto_perfil}`}
+              src={userImageUrl || `${API_URL}${user.foto_perfil}`}
               alt="Foto do Perfil"
               className="profile-photo"
             />

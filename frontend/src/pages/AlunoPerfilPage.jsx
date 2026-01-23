@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import EditAlunoModal from "../components/EditAlunoModal";
+import { getImageUrl } from "../utils/firebaseUpload";
 
 const AlunoPerfilPage = () => {
   const { alunoId } = useParams();
@@ -11,6 +12,7 @@ const AlunoPerfilPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -38,6 +40,25 @@ const AlunoPerfilPage = () => {
   useEffect(() => {
     if (alunoId) fetchAll();
   }, [alunoId]);
+
+  // Carrega a URL da imagem quando o aluno é atualizado
+  useEffect(() => {
+    const loadImageUrl = async () => {
+      if (aluno?.foto_perfil) {
+        try {
+          const url = await getImageUrl(aluno.foto_perfil);
+          setImageUrl(url);
+        } catch (error) {
+          console.error("Erro ao carregar imagem do aluno:", error);
+          setImageUrl(null);
+        }
+      } else {
+        setImageUrl(null);
+      }
+    };
+
+    loadImageUrl();
+  }, [aluno]);
 
   const handleSave = async (updatedData) => {
     try {
@@ -83,7 +104,7 @@ const AlunoPerfilPage = () => {
         >
           {aluno.foto_perfil ? (
             <img
-              src={`${API_URL}${aluno.foto_perfil}`}
+              src={imageUrl || `${API_URL}${aluno.foto_perfil}`}
               alt="Foto"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />

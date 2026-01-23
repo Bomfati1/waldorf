@@ -3,6 +3,12 @@ import { getApiUrl, API_URL, fetchWithAuth } from "../config/api";
 import ListaComentarios from "./ListaComentarios";
 import { useAuth } from "../context/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import {
+  uploadAoFirebase,
+  getDownloadUrl,
+  deleteArquivo,
+  validarArquivo,
+} from "../utils/firebaseUpload";
 
 const ISOPlanejamentoModalStyles = () => (
   <style>{`
@@ -33,11 +39,29 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [anexos, setAnexos] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     setLocalInfo(info);
     setComentarios(info.comentarios || []);
+    carregarAnexos();
   }, [info]);
+
+  const carregarAnexos = async () => {
+    try {
+      const response = await fetchWithAuth(
+        `/planejamentos/${info.id_planejamento}/anexos`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setAnexos(data);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar anexos:", error);
+    }
+  };
 
   const comentariosParaLista = useMemo(() => {
     if (!comentarios) return [];
@@ -142,6 +166,127 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
     userCargo === "administrador pedagógico" ||
     userCargo === "administrador geral";
 
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    console.log(
+      "📎 Arquivo selecionado:",
+      file.name,
+      "Tamanho:",
+      (file.size / 1024 / 1024).toFixed(2),
+      "MB",
+    );
+
+    // Valida o arquivo (máximo 15MB, PDFs, Docs e Excel)
+    const validation = validarArquivo(file, {
+      maxSizeMB: 15,
+      allowedTypes: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ],
+    });
+
+    if (!validation.valid) {
+      console.error("❌ Validação falhou:", validation.error);
+      alert(validation.error);
+      return;
+    }
+
+    console.log("✅ Validação passou, iniciando upload...");
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      console.log("🚀 Fazendo upload para Firebase...");
+      // Upload para o Firebase
+      const caminhoFirebase = await uploadAoFirebase(
+        file,
+        "anexos_planejamento",
+        localInfo.id_planejamento,
+        (progress) => {
+          console.log(`📊 Progresso: ${progress}%`);
+          setUploadProgress(progress);
+        },
+      );
+
+      console.log("✅ Upload completo! Caminho:", caminhoFirebase);
+      console.log("💾 Salvando referência no banco...");
+
+      // Salva a referência no banco de dados
+      const response = await fetchWithAuth("/planejamentos/anexos", {
+        method: "POST",
+        body: JSON.stringify({
+          planejamento_id: localInfo.id_planejamento,
+          nome_arquivo: file.name,
+          tipo_arquivo: file.type,
+          caminho_firebase: caminhoFirebase,
+          tamanho: file.size,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ Erro ao salvar no banco:", errorData);
+        throw new Error(
+          errorData.error || "Falha ao salvar anexo no banco de dados",
+        );
+      }
+
+      console.log("✅ Anexo salvo no banco!");
+      await carregarAnexos();
+      alert("✅ Anexo enviado com sucesso!");
+    } catch (error) {
+      console.error("💥 Erro no upload:", error);
+      alert(`❌ Erro ao fazer upload: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      // Limpa o input
+      event.target.value = "";
+    }
+  };
+
+  const handleDownloadAnexo = async (anexo) => {
+    try {
+      const url = await getDownloadUrl(anexo.caminho_firebase);
+      window.open(url, "_blank");
+    } catch (error) {
+      alert("Erro ao baixar arquivo");
+    }
+  };
+
+  const handleDeleteAnexo = async (anexo) => {
+    if (!window.confirm(`Deseja realmente excluir ${anexo.nome_arquivo}?`)) {
+      return;
+    }
+
+    try {
+      // Deleta do Firebase
+      await deleteArquivo(anexo.caminho_firebase);
+
+      // Deleta do banco
+      const response = await fetchWithAuth(
+        `/planejamentos/anexos/${anexo.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Falha ao excluir anexo do banco de dados");
+      }
+
+      await carregarAnexos();
+      alert("Anexo excluído com sucesso!");
+    } catch (error) {
+      alert(`Erro ao excluir anexo: ${error.message}`);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <ISOPlanejamentoModalStyles />
@@ -211,9 +356,185 @@ const ISOPlanejamentoModal = ({ info, onClose, onRefresh }) => {
 
         {activeTab === "planejamento" && (
           <div>
-            <p style={{ color: "#666", fontStyle: "italic" }}>
-              Sistema de anexos será implementado em breve.
-            </p>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h3
+                style={{
+                  fontSize: "1.1rem",
+                  marginBottom: "1rem",
+                  color: "#333",
+                }}
+              >
+                📎 Anexos do Planejamento
+              </h3>
+
+              <div style={{ marginBottom: "1rem" }}>
+                <label
+                  htmlFor="anexo-planejamento-file"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 24px",
+                    background: isUploading
+                      ? "#6c757d"
+                      : "linear-gradient(135deg, #17a2b8 0%, #138496 100%)",
+                    color: "#fff",
+                    borderRadius: "8px",
+                    cursor: isUploading ? "not-allowed" : "pointer",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    border: "none",
+                    userSelect: "none",
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isUploading) {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow =
+                        "0 4px 8px rgba(0,0,0,0.15)";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 2px 4px rgba(0,0,0,0.1)";
+                  }}
+                >
+                  {isUploading
+                    ? `📤 Enviando... ${uploadProgress}%`
+                    : "📎 + Adicionar Anexo"}
+                </label>
+                <input
+                  id="anexo-planejamento-file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={handleFileSelect}
+                  disabled={isUploading}
+                  style={{ display: "none" }}
+                />
+                <p
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#666",
+                    marginTop: "0.5rem",
+                    fontStyle: "italic",
+                  }}
+                >
+                  📄 Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 15MB)
+                </p>
+              </div>
+
+              {anexos.length === 0 ? (
+                <div
+                  style={{
+                    padding: "2rem",
+                    textAlign: "center",
+                    background: "#f8f9fa",
+                    borderRadius: "8px",
+                    color: "#6c757d",
+                  }}
+                >
+                  <p style={{ fontSize: "2rem", margin: "0 0 0.5rem 0" }}>📄</p>
+                  <p style={{ margin: 0 }}>Nenhum anexo adicionado ainda</p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.75rem",
+                  }}
+                >
+                  {anexos.map((anexo) => (
+                    <div
+                      key={anexo.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "12px 16px",
+                        background: "#f8f9fa",
+                        borderRadius: "6px",
+                        border: "1px solid #e0e0e0",
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontWeight: "500",
+                            color: "#333",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          {anexo.nome_arquivo}
+                        </div>
+                        <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                          {(anexo.tamanho / 1024 / 1024).toFixed(2)} MB •{" "}
+                          {new Date(anexo.criado_em).toLocaleDateString(
+                            "pt-BR",
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button
+                          onClick={() => handleDownloadAnexo(anexo)}
+                          style={{
+                            padding: "8px 16px",
+                            background: "#28a745",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                            fontWeight: "500",
+                            transition: "all 0.2s",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = "#218838";
+                            e.currentTarget.style.transform = "scale(1.05)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = "#28a745";
+                            e.currentTarget.style.transform = "scale(1)";
+                          }}
+                        >
+                          ⬇️ Baixar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAnexo(anexo)}
+                          style={{
+                            padding: "8px 16px",
+                            background: "#dc3545",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                            fontWeight: "500",
+                            transition: "all 0.2s",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = "#c82333";
+                            e.currentTarget.style.transform = "scale(1.05)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = "#dc3545";
+                            e.currentTarget.style.transform = "scale(1)";
+                          }}
+                        >
+                          🗑️ Excluir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

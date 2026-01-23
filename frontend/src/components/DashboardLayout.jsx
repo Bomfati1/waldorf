@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Notificacoes from "./Notificacoes";
 import { useAuth } from "../context/AuthContext"; // Importar o hook de autenticação
 import { API_URL } from "../config/api";
+import { getImageUrl } from "../utils/firebaseUpload";
 import "../css/DashboardLayout.css"; // Importa como módulo
 import { NavLink } from "react-router-dom";
 
@@ -11,6 +12,7 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth(); // Obter o usuário e a função de logout do contexto
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userImageUrl, setUserImageUrl] = useState(null);
 
   const handleLogout = () => {
     // Chama a função de logout do contexto para limpar os dados do usuário
@@ -25,6 +27,24 @@ const DashboardLayout = () => {
   const closeMenu = () => {
     setIsMenuOpen(false);
   };
+
+  useEffect(() => {
+    const loadUserImageUrl = async () => {
+      if (user?.foto_perfil) {
+        try {
+          const url = await getImageUrl(user.foto_perfil);
+          setUserImageUrl(url);
+        } catch (error) {
+          console.error("Erro ao carregar imagem do usuário:", error);
+          setUserImageUrl(null);
+        }
+      } else {
+        setUserImageUrl(null);
+      }
+    };
+
+    loadUserImageUrl();
+  }, [user]);
 
   return (
     <div className="dashboard-container">
@@ -49,7 +69,7 @@ const DashboardLayout = () => {
               <div className="profile-pic">
                 {user?.foto_perfil ? (
                   <img
-                    src={`${API_URL}${user.foto_perfil}`}
+                    src={userImageUrl || `${API_URL}${user.foto_perfil}`}
                     alt="Foto de perfil"
                     className="profile-image"
                   />

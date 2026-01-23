@@ -5,6 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { useAuth } from "../context/AuthContext";
 import ModalBase from "./ModalBase";
 import ListaComentarios from "./ListaComentarios";
+import AnexosPlanejamentoSection from "./AnexosPlanejamentoSection";
 
 const PlanejamentoModalStyles = () => (
   <style>{`
@@ -357,11 +358,7 @@ const PlanejamentoModal = ({ info, onClose, onUpdate, onDelete }) => {
       </div>
 
       {activeTab === "planejamento" && (
-        <div>
-          <p style={{ color: "#666", fontStyle: "italic" }}>
-            Sistema de anexos será implementado em breve.
-          </p>
-        </div>
+        <AnexosPlanejamentoSection planejamentoId={localInfo.id_planejamento} />
       )}
 
       {activeTab === "comentarios" && (

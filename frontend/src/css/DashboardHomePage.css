@@ -20,14 +20,14 @@
 .welcome-title {
   font-size: 2rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #1e3c72; /* Azul escuro para contraste com fundo branco */
   margin: 0 0 0.5rem 0;
 }
 
 .welcome-text {
   font-size: 1.1rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.95);
+  color: #495057; /* Cinza escuro para bom contraste */
   margin: 0;
 }
 
@@ -153,6 +153,10 @@
 .welcome-section {
   width: 100%;
   margin-bottom: 1rem;
+  background-color: #ffffff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Container para funcionalidades e perfil lado a lado */
