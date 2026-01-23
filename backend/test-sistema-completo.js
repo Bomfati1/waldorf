@@ -6,12 +6,12 @@ async function testSistemaCompleto() {
 
   try {
     console.log("📡 Enviando solicitação para /recuperar-senha...");
-    const response = await fetch('http://localhost:3001/recuperar-senha', {
-      method: 'POST',
+    const response = await fetch("http://localhost:3001/recuperar-senha", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email }),
     });
 
     const result = await response.json();
@@ -27,7 +27,6 @@ async function testSistemaCompleto() {
     } else {
       console.log("❌ Erro na solicitação");
     }
-
   } catch (error) {
     console.log("❌ Erro de conexão:", error.message);
   }

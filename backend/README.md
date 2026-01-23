@@ -96,6 +96,7 @@ O sistema suporta dois métodos para envio de emails de recuperação de senha:
 ### Método 1: API HTTP (Recomendado para Produção)
 
 **Vantagens:**
+
 - Maior confiabilidade em plataformas como Railway/Vercel
 - Não bloqueado por firewalls SMTP
 - Melhor deliverability
@@ -103,11 +104,13 @@ O sistema suporta dois métodos para envio de emails de recuperação de senha:
 **Opções suportadas:**
 
 #### Resend (recomendado)
+
 1. Acesse [resend.com](https://resend.com) e crie uma conta
 2. Vá para API Keys e gere uma chave
 3. Configure no Railway: `RESEND_API_KEY=re_sua_chave_aqui`
 
 #### SendGrid
+
 1. Acesse [sendgrid.com](https://sendgrid.com) e crie uma conta
 2. Vá para Settings > API Keys e gere uma chave
 3. Configure no Railway: `SENDGRID_API_KEY=SG.sua_chave_aqui`
@@ -115,6 +118,7 @@ O sistema suporta dois métodos para envio de emails de recuperação de senha:
 ### Método 2: SMTP (Fallback/Local)
 
 **Para Gmail:**
+
 1. Ative a [verificação em duas etapas](https://myaccount.google.com/security)
 2. Gere uma [senha de app](https://myaccount.google.com/apppasswords)
 3. Configure as variáveis:
@@ -133,6 +137,7 @@ Ajuste `SMTP_HOST`, `SMTP_PORT` conforme seu provedor (ex: smtp.outlook.com:587)
 ### Ordem de Prioridade
 
 O sistema tenta enviar na seguinte ordem:
+
 1. **API HTTP** (Resend/SendGrid) - se configurada
 2. **SMTP** - como fallback
 

@@ -76,14 +76,16 @@ app.use(cookieParser());
 
 // Middleware para logar todas as requisições
 app.use((req, res, next) => {
-  console.log(`📨 [REQUEST] ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  console.log(
+    `📨 [REQUEST] ${req.method} ${req.path} - ${new Date().toISOString()}`,
+  );
   console.log(`📨 [REQUEST] Headers:`, {
-    'content-type': req.headers['content-type'],
-    'user-agent': req.headers['user-agent']?.substring(0, 50),
-    'origin': req.headers.origin,
+    "content-type": req.headers["content-type"],
+    "user-agent": req.headers["user-agent"]?.substring(0, 50),
+    origin: req.headers.origin,
   });
 
-  if (req.method === 'POST' && req.body && Object.keys(req.body).length > 0) {
+  if (req.method === "POST" && req.body && Object.keys(req.body).length > 0) {
     console.log(`📨 [REQUEST] Body:`, JSON.stringify(req.body, null, 2));
   }
 
@@ -112,21 +114,21 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
   console.log("📧 [sendEmailViaAPI] Enviando via API HTTP...");
 
   // Detectar qual serviço usar baseado na chave
-  const isResend = apiKey.startsWith('re_');
-  const isSendGrid = apiKey.startsWith('SG.');
+  const isResend = apiKey.startsWith("re_");
+  const isSendGrid = apiKey.startsWith("SG.");
 
   if (isResend) {
     console.log("📧 [sendEmailViaAPI] Usando Resend API");
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev', // Domínio verificado do Resend
+        from: "onboarding@resend.dev", // Domínio verificado do Resend
         to: [to],
-        subject: 'Recuperação de senha - Sistema Escolar',
+        subject: "Recuperação de senha - Sistema Escolar",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #333; text-align: center;">Recuperação de Senha</h2>
@@ -155,24 +157,26 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
     const result = await response.json();
     console.log("✅ [sendEmailViaAPI] Email enviado via Resend:", result.id);
     return true;
-
   } else if (isSendGrid) {
     console.log("📧 [sendEmailViaAPI] Usando SendGrid API");
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        personalizations: [{
-          to: [{ email: to }],
-        }],
-        from: { email: 'onboarding@resend.dev', name: 'Sistema Escolar' }, // Domínio verificado
-        subject: 'Recuperação de senha - Sistema Escolar',
-        content: [{
-          type: 'text/html',
-          value: `
+        personalizations: [
+          {
+            to: [{ email: to }],
+          },
+        ],
+        from: { email: "onboarding@resend.dev", name: "Sistema Escolar" }, // Domínio verificado
+        subject: "Recuperação de senha - Sistema Escolar",
+        content: [
+          {
+            type: "text/html",
+            value: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h2 style="color: #333; text-align: center;">Recuperação de Senha</h2>
               <p>Olá,</p>
@@ -189,7 +193,8 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
               <p style="color: #666; font-size: 12px;">Este é um email automático, não responda a esta mensagem.</p>
             </div>
           `,
-        }],
+          },
+        ],
       }),
     });
 
@@ -202,18 +207,25 @@ async function sendEmailViaAPI(to, resetLink, apiKey) {
     return true;
   }
 
-  throw new Error('API key format not recognized');
+  throw new Error("API key format not recognized");
 }
 
 async function sendEmailViaSMTP(to, resetLink) {
   console.log("📧 [sendEmailViaSMTP] Enviando via SMTP...");
   const nodemailer = require("nodemailer");
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } = process.env;
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } =
+    process.env;
 
   console.log("📧 [sendEmailViaSMTP] SMTP_HOST:", SMTP_HOST);
   console.log("📧 [sendEmailViaSMTP] SMTP_PORT:", SMTP_PORT);
-  console.log("📧 [sendEmailViaSMTP] SMTP_USER:", SMTP_USER ? "***" + SMTP_USER.slice(-10) : "Não definido");
-  console.log("📧 [sendEmailViaSMTP] SMTP_PASS:", SMTP_PASS ? "***" + SMTP_PASS.slice(-5) : "Não definido");
+  console.log(
+    "📧 [sendEmailViaSMTP] SMTP_USER:",
+    SMTP_USER ? "***" + SMTP_USER.slice(-10) : "Não definido",
+  );
+  console.log(
+    "📧 [sendEmailViaSMTP] SMTP_PASS:",
+    SMTP_PASS ? "***" + SMTP_PASS.slice(-5) : "Não definido",
+  );
   console.log("📧 [sendEmailViaSMTP] EMAIL_FROM:", EMAIL_FROM);
 
   if (!SMTP_HOST) {
@@ -276,7 +288,8 @@ async function sendResetEmail(to, resetLink) {
     console.log("📧 [sendResetEmail] Link de reset:", resetLink);
 
     // Tentar usar API HTTP primeiro (mais confiável em produção)
-    const emailApiKey = process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY;
+    const emailApiKey =
+      process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY;
 
     if (emailApiKey) {
       console.log("📧 [sendResetEmail] Tentando enviar via API HTTP...");
@@ -291,7 +304,6 @@ async function sendResetEmail(to, resetLink) {
     // Fallback para SMTP
     console.log("📧 [sendResetEmail] Usando SMTP como fallback...");
     return await sendEmailViaSMTP(to, resetLink);
-
   } catch (err) {
     console.error("❌ [sendResetEmail] ======= ERRO GERAL =======");
     console.error("❌ [sendResetEmail] Tipo do erro:", err.constructor.name);
@@ -574,7 +586,10 @@ app.post("/recuperar-senha", async (req, res) => {
       [email],
     );
 
-    console.log("🔑 [recuperar-senha] Usuários encontrados:", userQuery.rows.length);
+    console.log(
+      "🔑 [recuperar-senha] Usuários encontrados:",
+      userQuery.rows.length,
+    );
 
     // Resposta genérica para não vazar existência de e-mails
     const genericMsg = {
@@ -583,12 +598,19 @@ app.post("/recuperar-senha", async (req, res) => {
     };
 
     if (userQuery.rows.length === 0) {
-      console.log("❌ [recuperar-senha] Usuário não encontrado - retornando resposta genérica");
+      console.log(
+        "❌ [recuperar-senha] Usuário não encontrado - retornando resposta genérica",
+      );
       return res.status(200).json(genericMsg);
     }
 
     const user = userQuery.rows[0];
-    console.log("✅ [recuperar-senha] Usuário encontrado:", user.email, "(ID:", user.id + ")");
+    console.log(
+      "✅ [recuperar-senha] Usuário encontrado:",
+      user.email,
+      "(ID:",
+      user.id + ")",
+    );
 
     const resetToken = jwt.sign(
       { type: "password_reset", userId: user.id, email: user.email },

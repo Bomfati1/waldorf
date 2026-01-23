@@ -1,14 +1,17 @@
 // Teste do Resend configurado
-require('dotenv').config(); // Carregar variáveis de ambiente
+require("dotenv").config(); // Carregar variáveis de ambiente
 
 async function testResendConfigurado() {
   console.log("🧪 Testando Resend configurado...");
 
   const apiKey = process.env.RESEND_API_KEY;
   console.log("🔑 API Key detectada:", apiKey ? "✅ Presente" : "❌ Ausente");
-  console.log("🔑 Valor da chave:", apiKey ? apiKey.substring(0, 10) + "..." : "N/A");
+  console.log(
+    "🔑 Valor da chave:",
+    apiKey ? apiKey.substring(0, 10) + "..." : "N/A",
+  );
 
-  if (!apiKey || apiKey.includes('xxxxxxxxx')) {
+  if (!apiKey || apiKey.includes("xxxxxxxxx")) {
     console.log("❌ RESEND_API_KEY não configurada corretamente");
     return;
   }
@@ -17,16 +20,16 @@ async function testResendConfigurado() {
   try {
     console.log("📧 Testando envio via Resend API...");
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev', // Usando domínio verificado do Resend
-        to: ['matheusbomfati10@gmail.com'], // Usando seu email real
-        subject: 'Teste - Sistema Escolar Resend',
+        from: "onboarding@resend.dev", // Usando domínio verificado do Resend
+        to: ["matheusbomfati10@gmail.com"], // Usando seu email real
+        subject: "Teste - Sistema Escolar Resend",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #333; text-align: center;">🎉 Resend Configurado!</h2>
@@ -38,7 +41,7 @@ async function testResendConfigurado() {
               <li>✅ Conexão com Resend API está funcionando</li>
               <li>✅ Sistema de email está pronto para produção</li>
             </ul>
-            <p><strong>Data do teste:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+            <p><strong>Data do teste:</strong> ${new Date().toLocaleString("pt-BR")}</p>
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
             <p style="color: #666; font-size: 12px;">Este é um email automático de teste.</p>
           </div>
@@ -58,7 +61,6 @@ async function testResendConfigurado() {
     console.log("✅ Email enviado com sucesso!");
     console.log("📧 ID do email:", result.id);
     console.log("📧 Verifique seu email: matheusbomfati10@gmail.com");
-
   } catch (error) {
     console.log("❌ Erro na requisição:", error.message);
   }
