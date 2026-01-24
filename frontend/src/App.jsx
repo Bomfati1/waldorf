@@ -20,6 +20,7 @@ import RelatoriosPage from "./pages/RelatoriosPage";
 import PerfilPage from "./pages/PerfilPage";
 import EditarResponsavelPage from "./pages/EditarResponsavelPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import ResetPassword from "./components/ResetPassword";
 
 function App() {
   console.log(
@@ -66,6 +67,9 @@ function App() {
           element={<InteressadosDashboardPage />}
         />
       </Route>
+
+      {/* Rota para reset de senha */}
+      <Route path="/resetar-senha" element={<ResetPassword />} />
 
       {/* Rota catch-all para 404 */}
       <Route path="*" element={<NotFoundPage />} />
