@@ -25,7 +25,7 @@ import ResetPassword from "./components/ResetPassword";
 function App() {
   console.log(
     "✅ App carregado - PlanejamentosISOPage importado:",
-    PlanejamentosISOPage
+    PlanejamentosISOPage,
   );
 
   return (
