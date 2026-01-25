@@ -23,7 +23,7 @@ const Notificacoes = () => {
 
       if (response.status === 401) {
         console.warn(
-          "🔐 [FRONTEND] Usuário não autenticado - faça login novamente"
+          "🔐 [FRONTEND] Usuário não autenticado - faça login novamente",
         );
         // Limpar notificações em caso de não autenticado
         setNotificacoes([]);
@@ -42,13 +42,13 @@ const Notificacoes = () => {
         setNaoLidas(data.filter((n) => !n.lida).length);
         console.log(
           "✅ [FRONTEND] Estado atualizado - não lidas:",
-          data.filter((n) => !n.lida).length
+          data.filter((n) => !n.lida).length,
         );
       } else {
         console.error(
           "❌ [FRONTEND] Erro na resposta:",
           response.status,
-          response.statusText
+          response.statusText,
         );
       }
     } catch (error) {
@@ -306,7 +306,7 @@ const Notificacoes = () => {
                     onClick={(e) => deletarNotificacao(notif.id, e)}
                     aria-label={`Deletar notificação: ${notif.mensagem.substring(
                       0,
-                      50
+                      50,
                     )}...`}
                     title="Deletar notificação"
                   >

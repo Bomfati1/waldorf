@@ -142,5 +142,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         </ErrorBoundary>
       </ModalProvider>
     </AuthProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

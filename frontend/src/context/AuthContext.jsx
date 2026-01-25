@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getApiUrl, fetchWithAuth } from '../config/api';
+import { getApiUrl, fetchWithAuth } from "../config/api";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
         // Primeiro verifica se há dados no localStorage
         const storedUserInfo = localStorage.getItem("userInfo");
         const token = localStorage.getItem("token");
-        
+
         if (storedUserInfo) {
           setUser(JSON.parse(storedUserInfo));
         }
@@ -23,9 +23,9 @@ export const AuthProvider = ({ children }) => {
         // Só verifica no backend se houver token
         if (token) {
           // Depois verifica se o token no backend ainda é válido
-          const response = await fetchWithAuth('/auth/me', {
+          const response = await fetchWithAuth("/auth/me", {
             headers: {
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
             credentials: "include",
           });
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
             const userData = await response.json();
             console.log(
               "[AuthContext] Dados do usuário carregados do backend:",
-              userData
+              userData,
             );
             // Atualiza os dados do usuário com informações do backend, apenas se diferentes
             if (JSON.stringify(userData) !== JSON.stringify(user)) {
@@ -73,10 +73,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem("token");
       // Chama o backend para limpar o cookie
-      await fetchWithAuth('/logout', {
+      await fetchWithAuth("/logout", {
         method: "POST",
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          Authorization: token ? `Bearer ${token}` : "",
         },
         credentials: "include",
       });

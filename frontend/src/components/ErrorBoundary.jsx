@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,10 +13,10 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log the error to an error reporting service
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({
       error: error,
-      errorInfo: errorInfo
+      errorInfo: errorInfo,
     });
   }
 
@@ -24,16 +24,18 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       // You can render any custom fallback UI
       return (
-        <div style={{
-          padding: '20px',
-          margin: '20px',
-          border: '1px solid #ff6b6b',
-          borderRadius: '5px',
-          backgroundColor: '#ffe6e6'
-        }}>
+        <div
+          style={{
+            padding: "20px",
+            margin: "20px",
+            border: "1px solid #ff6b6b",
+            borderRadius: "5px",
+            backgroundColor: "#ffe6e6",
+          }}
+        >
           <h2>Algo deu errado!</h2>
           <p>Ocorreu um erro inesperado na aplicação.</p>
-          <details style={{ whiteSpace: 'pre-wrap' }}>
+          <details style={{ whiteSpace: "pre-wrap" }}>
             <summary>Detalhes do erro (para desenvolvedores)</summary>
             {this.state.error && this.state.error.toString()}
             <br />
@@ -42,13 +44,13 @@ class ErrorBoundary extends React.Component {
           <button
             onClick={() => window.location.reload()}
             style={{
-              marginTop: '10px',
-              padding: '10px 20px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
+              marginTop: "10px",
+              padding: "10px 20px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
             }}
           >
             Recarregar página
