@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; // 1. Importar o AuthProvider
 import { ModalProvider } from "./context/ModalContext"; // Importar o ModalProvider
+import ErrorBoundary from "./components/ErrorBoundary"; // Importar o ErrorBoundary
 
 // Importando os componentes de página e layout
 import Login from "./components/Login";
@@ -136,7 +137,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     {/* 2. Envolver a aplicação com o AuthProvider */}
     <AuthProvider>
       <ModalProvider>
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
       </ModalProvider>
     </AuthProvider>
   </React.StrictMode>

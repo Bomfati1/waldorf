@@ -36,9 +36,11 @@ export const AuthProvider = ({ children }) => {
               "[AuthContext] Dados do usuário carregados do backend:",
               userData
             );
-            // Atualiza os dados do usuário com informações do backend
-            setUser(userData);
-            localStorage.setItem("userInfo", JSON.stringify(userData));
+            // Atualiza os dados do usuário com informações do backend, apenas se diferentes
+            if (JSON.stringify(userData) !== JSON.stringify(user)) {
+              setUser(userData);
+              localStorage.setItem("userInfo", JSON.stringify(userData));
+            }
           } else {
             // Token inválido, limpa os dados
             localStorage.removeItem("userInfo");

@@ -243,12 +243,6 @@ const Notificacoes = () => {
     }
   };
 
-  console.log("🎨 [FRONTEND RENDER] Estado atual:", {
-    notificacoes: notificacoes.length,
-    naoLidas,
-    aberto,
-  });
-
   return (
     <div className="notificacoes-container" ref={dropdownRef}>
       <button
