@@ -17,11 +17,6 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  // Se já está logado, redireciona para o dashboard
-  if (user) {
-    return <Navigate to="/home" replace />;
-  }
-
   // Efeito para verificar se o usuário já está logado via token
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -50,6 +45,11 @@ const Login = () => {
 
     checkAuthStatus();
   }, [login, navigate]);
+
+  // Se já está logado, redireciona para o dashboard
+  if (user) {
+    return <Navigate to="/home" replace />;
+  }
 
   // A função de submit foi reescrita para ser assíncrona e se comunicar com a API
   const handleSubmit = async (event) => {
