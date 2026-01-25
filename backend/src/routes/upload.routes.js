@@ -213,4 +213,52 @@ router.get("/list/:category/:refId", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/upload/request-download
+ * Gera uma URL assinada para download direto do Firebase Storage
+ */
+router.post("/request-download", async (req, res) => {
+  try {
+    const { filePath } = req.body;
+
+    console.log("🔍 [request-download] Solicitando URL para:", filePath);
+
+    if (!filePath) {
+      return res.status(400).json({
+        error: "Parâmetro obrigatório: filePath",
+      });
+    }
+
+    // Verificar se o arquivo existe
+    const file = bucket.file(filePath);
+    const [exists] = await file.exists();
+
+    if (!exists) {
+      console.log("❌ [request-download] Arquivo não encontrado:", filePath);
+      return res.status(404).json({
+        error: "Arquivo não encontrado",
+      });
+    }
+
+    // Gerar URL assinada para download (válida por 15 minutos)
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 15 * 60 * 1000, // 15 minutos
+    });
+
+    console.log("✅ [request-download] URL gerada com sucesso");
+
+    res.status(200).json({
+      url,
+      expiresIn: "15 minutos",
+    });
+  } catch (error) {
+    console.error("❌ [request-download] Erro:", error);
+    res.status(500).json({
+      error: "Falha ao gerar URL de download",
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

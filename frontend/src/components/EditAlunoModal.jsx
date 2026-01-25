@@ -74,40 +74,36 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   }, [alunoData]);
 
   // Carregar responsáveis vinculados (N:N)
-  useEffect(() => {
-    const fetchResponsaveis = async () => {
-      try {
-        const res = await fetch(
-          getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis`),
-          { credentials: "include" },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setResponsaveisList(Array.isArray(data) ? data : []);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar responsáveis do aluno:", e);
+  const fetchResponsaveis = async () => {
+    try {
+      const response = await fetchWithAuth(`/alunos/${alunoData.aluno_id}/responsaveis`);
+      if (response.ok) {
+        const data = await response.json();
+        setResponsaveisList(Array.isArray(data) ? data : []);
       }
-    };
+    } catch (e) {
+      console.error("Erro ao carregar responsáveis do aluno:", e);
+    }
+  };
+
+  useEffect(() => {
     if (alunoData?.aluno_id) fetchResponsaveis();
   }, [alunoData?.aluno_id]);
 
   // Carregar anexos do aluno
-  useEffect(() => {
-    const fetchAnexos = async () => {
-      try {
-        const res = await fetch(
-          getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-          { credentials: "include" },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setAnexos(Array.isArray(data) ? data : []);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar anexos do aluno:", e);
+  const fetchAnexos = async () => {
+    try {
+      const response = await fetchWithAuth(`/alunos/${alunoData.aluno_id}/anexos`);
+      if (response.ok) {
+        const data = await response.json();
+        setAnexos(Array.isArray(data) ? data : []);
       }
-    };
+    } catch (e) {
+      console.error("Erro ao carregar anexos do aluno:", e);
+    }
+  };
+
+  useEffect(() => {
     if (alunoData?.aluno_id && showAnexos) fetchAnexos();
   }, [alunoData?.aluno_id, showAnexos]);
 
@@ -185,20 +181,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
     }
   };
 
-  const refetchResponsaveis = async () => {
-    try {
-      const res = await fetch(
-        getApiUrl(`/alunos/${alunoData.aluno_id}/responsaveis`),
-        { credentials: "include" },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setResponsaveisList(Array.isArray(data) ? data : []);
-      }
-    } catch (e) {
-      console.error("Erro ao recarregar responsáveis:", e);
-    }
-  };
+  const refetchResponsaveis = fetchResponsaveis;
 
   const vincularResponsavelExistente = async () => {
     if (!respSelection.familiaId) return;
@@ -540,24 +523,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
 
               <AnexoAlunoUpload
                 alunoId={alunoData.aluno_id}
-                onUploadSuccess={() => {
-                  // Recarregar anexos após upload
-                  const fetchAnexos = async () => {
-                    try {
-                      const res = await fetch(
-                        getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-                        { credentials: "include" },
-                      );
-                      if (res.ok) {
-                        const data = await res.json();
-                        setAnexos(Array.isArray(data) ? data : []);
-                      }
-                    } catch (e) {
-                      console.error("Erro ao recarregar anexos:", e);
-                    }
-                  };
-                  fetchAnexos();
-                }}
+                onUploadSuccess={fetchAnexos}
               />
 
               {/* Lista de anexos */}
@@ -566,24 +532,7 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
                   anexos={anexos}
                   tipo="aluno"
                   idRef={alunoData.aluno_id}
-                  onDelete={(id) => {
-                    // Após delete, recarregar
-                    const fetchAnexos = async () => {
-                      try {
-                        const res = await fetch(
-                          getApiUrl(`/alunos/${alunoData.aluno_id}/anexos`),
-                          { credentials: "include" },
-                        );
-                        if (res.ok) {
-                          const data = await res.json();
-                          setAnexos(Array.isArray(data) ? data : []);
-                        }
-                      } catch (e) {
-                        console.error("Erro ao recarregar anexos:", e);
-                      }
-                    };
-                    fetchAnexos();
-                  }}
+                  onDelete={fetchAnexos}
                 />
               ) : (
                 <p style={{ color: "#999", fontStyle: "italic" }}>
