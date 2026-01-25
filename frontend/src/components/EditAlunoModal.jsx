@@ -76,7 +76,9 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   // Carregar responsáveis vinculados (N:N)
   const fetchResponsaveis = async () => {
     try {
-      const response = await fetchWithAuth(`/alunos/${alunoData.aluno_id}/responsaveis`);
+      const response = await fetchWithAuth(
+        `/alunos/${alunoData.aluno_id}/responsaveis`,
+      );
       if (response.ok) {
         const data = await response.json();
         setResponsaveisList(Array.isArray(data) ? data : []);
@@ -93,7 +95,9 @@ const EditAlunoModal = ({ alunoData, turmas, onClose, onSave }) => {
   // Carregar anexos do aluno
   const fetchAnexos = async () => {
     try {
-      const response = await fetchWithAuth(`/alunos/${alunoData.aluno_id}/anexos`);
+      const response = await fetchWithAuth(
+        `/alunos/${alunoData.aluno_id}/anexos`,
+      );
       if (response.ok) {
         const data = await response.json();
         setAnexos(Array.isArray(data) ? data : []);
