@@ -784,7 +784,7 @@ const alunoAnexosStorage = multer.diskStorage({
 const alunoAnexosUpload = multer({
   storage: alunoAnexosStorage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // Limite de 10MB
+    fileSize: 5 * 1024 * 1024, // Limite de 5MB
   },
 });
 
