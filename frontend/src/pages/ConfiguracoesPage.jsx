@@ -216,6 +216,7 @@ function ConfiguracoesPage() {
             title="👤 Adicionar Novo Membro"
             size="medium"
             zIndex={getZIndex(modalId)}
+            closeOnEscape={false}
           >
             <div className="add-member-form" style={{ margin: 0 }}>
               <form onSubmit={handleAddMember}>
@@ -341,7 +342,7 @@ function ConfiguracoesPage() {
                   ))}
                 </ul>
               </div>
-            )
+            ),
         )}
       </div>
     </div>
