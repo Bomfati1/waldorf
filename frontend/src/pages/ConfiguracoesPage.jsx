@@ -217,6 +217,7 @@ function ConfiguracoesPage() {
             size="medium"
             zIndex={getZIndex(modalId)}
             closeOnEscape={false}
+            closeOnOverlayClick={false}
           >
             <div className="add-member-form" style={{ margin: 0 }}>
               <form onSubmit={handleAddMember}>
